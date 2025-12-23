@@ -27,10 +27,10 @@ This project follows **Clean Architecture** principles:
 │ └── server/
 │ └── main.go
 ├── internal/
-│ ├── domain/ # Core business logic (entities, interfaces)
-│ ├── usecase/ # Application use cases
-│ ├── delivery/ # HTTP handlers (REST)
-│ └── infrastructure/ # DB, external services, repositories
+│ ├── handler/
+│ ├── model/
+│ ├── repository/
+│ └── service/
 ├── pkg/ # Shared utilities
 ├── configs/ # Configuration files
 └── docs/ # API docs, diagrams
