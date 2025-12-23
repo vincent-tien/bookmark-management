@@ -21,6 +21,7 @@ This service allows users to create, organize, update, and retrieve bookmarks ef
 
 This project follows **Clean Architecture** principles:
 
+```plaintext
 .
 ├── cmd/ # Application entry points
 │ └── server/
@@ -33,7 +34,7 @@ This project follows **Clean Architecture** principles:
 ├── pkg/ # Shared utilities
 ├── configs/ # Configuration files
 └── docs/ # API docs, diagrams
-
+```
 
 Benefits:
 - Clear separation of concerns
@@ -45,7 +46,7 @@ Benefits:
 ## 🚀 Tech Stack
 
 - **Language:** Go (Golang)
-- **HTTP Router:** net/http / chi / gin *(configurable)*
+- **HTTP Router:** gin *(configurable)*
 - **Database:** PostgreSQL / MySQL *(pluggable)*
 - **Auth:** JWT (optional)
 - **API Style:** REST
