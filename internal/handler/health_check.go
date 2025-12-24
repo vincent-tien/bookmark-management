@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,19 +9,34 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/service"
 )
 
-type HealthCheckHandler interface {
+type HealthCheck interface {
 	DoCheck(c *gin.Context)
 }
 
-type HealthCheckServiceHandler struct {
-	svc service.Uuid
-	cfg *config.Config
+type healthCheckService struct {
+	svc  service.Uuid
+	cfg  *config.Config
+	uuid string
 }
 
-func NewUuidHandler(svc service.Uuid, cfg *config.Config) HealthCheckHandler {
-	return &HealthCheckServiceHandler{
-		svc: svc,
-		cfg: cfg,
+func NewHealthCheck(svc service.Uuid, cfg *config.Config) HealthCheck {
+	var err error
+
+	uuid := cfg.InstanceId
+
+	if uuid == "" {
+		uuid, err = svc.Generate()
+	}
+
+	if err != nil {
+		log.Printf("Failed to generate uuid: %v", err)
+		uuid = ""
+	}
+
+	return &healthCheckService{
+		svc:  svc,
+		cfg:  cfg,
+		uuid: uuid,
 	}
 }
 
@@ -36,21 +52,14 @@ type GenerateUuidResponse struct {
 // @Description	check health
 // @Accept			json
 // @Router			/health-check [get]
-func (h *HealthCheckServiceHandler) DoCheck(c *gin.Context) {
-	var err error
-	uuid := h.cfg.InstanceId
-
-	if uuid == "" {
-		uuid, err = h.svc.Generate()
-	}
-
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+func (h *healthCheckService) DoCheck(c *gin.Context) {
+	if h.uuid == "" {
+		c.String(http.StatusInternalServerError, "Failed to generate uuid")
 	} else {
 		c.JSON(http.StatusOK, GenerateUuidResponse{
 			Message:     "OK",
 			ServiceName: h.cfg.ServiceName,
-			InstanceId:  uuid,
+			InstanceId:  h.uuid,
 		})
 	}
 }

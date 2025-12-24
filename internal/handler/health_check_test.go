@@ -13,7 +13,7 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/service/mocks"
 )
 
-func TestUuidServiceHandler_DoCheck(t *testing.T) {
+func TestUuidService_DoCheck(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -47,7 +47,7 @@ func TestUuidServiceHandler_DoCheck(t *testing.T) {
 				return mockSvc
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedResp:   `something wrong`,
+			expectedResp:   `Failed to generate uuid`,
 		},
 	}
 
@@ -66,7 +66,7 @@ func TestUuidServiceHandler_DoCheck(t *testing.T) {
 
 			mockSvc := tc.setupMockSvc()
 
-			handler := NewUuidHandler(mockSvc, cfg)
+			handler := NewHealthCheck(mockSvc, cfg)
 			handler.DoCheck(ctx)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)

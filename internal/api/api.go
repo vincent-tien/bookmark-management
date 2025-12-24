@@ -43,6 +43,6 @@ func New(cfg *config.Config) Engine {
 
 func (a *api) registerEP(cfg *config.Config) {
 	uuidSvc := service.NewUuid()
-	uuidHandler := handler.NewUuidHandler(uuidSvc, cfg)
+	uuidHandler := handler.NewHealthCheck(uuidSvc, cfg)
 	a.app.GET(routers.Endpoints.HealthCheck, uuidHandler.DoCheck)
 }
