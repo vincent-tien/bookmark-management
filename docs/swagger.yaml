@@ -1,0 +1,16 @@
+info:
+  contact: {}
+  description: Bookmark Management API is a RESTful service
+  title: Bookmark Management API
+  version: "1.0"
+paths:
+  /health-check:
+    get:
+      consumes:
+      - application/json
+      description: check health
+      responses: {}
+      summary: health check
+      tags:
+      - utils
+swagger: "2.0"
