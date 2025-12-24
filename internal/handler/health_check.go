@@ -17,7 +17,7 @@ type HealthCheck interface {
 	DoCheck(c *gin.Context)
 }
 
-type healthCheckService struct {
+type healthCheckHandler struct {
 	svc  service.Uuid
 	cfg  *config.Config
 	uuid string
@@ -41,15 +41,15 @@ func NewHealthCheck(svc service.Uuid, cfg *config.Config) HealthCheck {
 		uuid = ""
 	}
 
-	return &healthCheckService{
+	return &healthCheckHandler{
 		svc:  svc,
 		cfg:  cfg,
 		uuid: uuid,
 	}
 }
 
-// GenerateUuidResponse represents the response structure for health check endpoints.
-type GenerateUuidResponse struct {
+// HealthCheckResponse represents the response structure for health check endpoints.
+type HealthCheckResponse struct {
 	Message     string `json:"message"`      // Status message
 	ServiceName string `json:"service_name"` // Name of the service
 	InstanceId  string `json:"instance_id"`  // Unique instance identifier
@@ -64,11 +64,11 @@ type GenerateUuidResponse struct {
 //	@Description	check health
 //	@Accept			json
 //	@Router			/health-check [get]
-func (h *healthCheckService) DoCheck(c *gin.Context) {
+func (h *healthCheckHandler) DoCheck(c *gin.Context) {
 	if h.uuid == "" {
 		c.String(http.StatusInternalServerError, "Failed to generate uuid")
 	} else {
-		c.JSON(http.StatusOK, GenerateUuidResponse{
+		c.JSON(http.StatusOK, HealthCheckResponse{
 			Message:     "OK",
 			ServiceName: h.cfg.ServiceName,
 			InstanceId:  h.uuid,
