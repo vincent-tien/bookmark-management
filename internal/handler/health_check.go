@@ -9,7 +9,11 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/service"
 )
 
+// HealthCheck defines the interface for health check handlers.
+// It provides a method to perform health check operations.
 type HealthCheck interface {
+	// DoCheck performs a health check and returns the service status.
+	// It responds with the service name and instance ID.
 	DoCheck(c *gin.Context)
 }
 
@@ -19,6 +23,10 @@ type healthCheckService struct {
 	uuid string
 }
 
+// NewHealthCheck creates and returns a new health check handler instance.
+// It initializes the handler with a UUID service and configuration.
+// If no instance ID is provided in the config, it generates a new UUID.
+// Returns a HealthCheck interface implementation.
 func NewHealthCheck(svc service.Uuid, cfg *config.Config) HealthCheck {
 	var err error
 
@@ -40,18 +48,22 @@ func NewHealthCheck(svc service.Uuid, cfg *config.Config) HealthCheck {
 	}
 }
 
+// GenerateUuidResponse represents the response structure for health check endpoints.
 type GenerateUuidResponse struct {
-	Message     string `json:"message"`
-	ServiceName string `json:"service_name"`
-	InstanceId  string `json:"instance_id"`
+	Message     string `json:"message"`      // Status message
+	ServiceName string `json:"service_name"` // Name of the service
+	InstanceId  string `json:"instance_id"`  // Unique instance identifier
 }
 
-// DoCheck  	godoc
-// @Summary		health check
-// @Tags		utils
-// @Description	check health
-// @Accept			json
-// @Router			/health-check [get]
+// DoCheck performs a health check and returns the service status.
+// It responds with the service name and instance ID.
+// Returns HTTP 200 OK if the service is healthy, or HTTP 500 if UUID generation failed.
+//
+//	@Summary		health check
+//	@Tags		utils
+//	@Description	check health
+//	@Accept			json
+//	@Router			/health-check [get]
 func (h *healthCheckService) DoCheck(c *gin.Context) {
 	if h.uuid == "" {
 		c.String(http.StatusInternalServerError, "Failed to generate uuid")

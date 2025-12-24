@@ -1,7 +1,8 @@
 package routers
 
+// Routes holds the endpoint paths for the API.
 type Routes struct {
-	HealthCheck string
+	HealthCheck string // Health check endpoint path
 }
 
 var Endpoints = Routes{
