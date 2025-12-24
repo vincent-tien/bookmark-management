@@ -1,0 +1,24 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Bookmark Management API is a RESTful service",
+        "title": "Bookmark Management API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "paths": {
+        "/health-check": {
+            "get": {
+                "description": "check health",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "utils"
+                ],
+                "summary": "health check",
+                "responses": {}
+            }
+        }
+    }
+}
