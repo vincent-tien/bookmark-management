@@ -41,6 +41,8 @@ var SwaggerInfo = &swag.Spec{
 	Description:      "Bookmark Management API is a RESTful service",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
+	LeftDelim:        "{{",
+	RightDelim:       "}}",
 }
 
 func init() {
