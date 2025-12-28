@@ -28,7 +28,7 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/links/shorten": {
+        "/v1/links/shorten": {
             "post": {
                 "description": "Generate a short URL with expiration time",
                 "consumes": [

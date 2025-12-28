@@ -1,4 +1,4 @@
-FROM redis:latest
+FROM redis:alpine
 
 LABEL maintainer="TienDang <tiendang.vincent@gmail.com>"
 

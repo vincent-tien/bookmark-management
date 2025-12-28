@@ -1,13 +1,12 @@
 package handler
 
 import (
-	"context"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"github.com/vincent-tien/bookmark-management/internal/config"
+	"github.com/vincent-tien/bookmark-management/internal/repository"
 	"github.com/vincent-tien/bookmark-management/internal/service"
 )
 
@@ -20,17 +19,17 @@ type HealthCheck interface {
 }
 
 type healthCheckHandler struct {
-	svc         service.Uuid
-	cfg         *config.Config
-	uuid        string
-	redisClient *redis.Client
+	svc           service.Uuid
+	cfg           *config.Config
+	uuid          string
+	pingRedisRepo repository.PingRedis
 }
 
 // NewHealthCheck creates and returns a new health check handler instance.
 // It initializes the handler with a UUID service, configuration, and Redis client.
 // If no instance ID is provided in the config, it generates a new UUID.
 // Returns a HealthCheck interface implementation.
-func NewHealthCheck(svc service.Uuid, cfg *config.Config, redisClient *redis.Client) HealthCheck {
+func NewHealthCheck(svc service.Uuid, cfg *config.Config, repo repository.PingRedis) HealthCheck {
 	var err error
 
 	uuid := cfg.InstanceId
@@ -45,10 +44,10 @@ func NewHealthCheck(svc service.Uuid, cfg *config.Config, redisClient *redis.Cli
 	}
 
 	return &healthCheckHandler{
-		svc:         svc,
-		cfg:         cfg,
-		uuid:        uuid,
-		redisClient: redisClient,
+		svc:           svc,
+		cfg:           cfg,
+		uuid:          uuid,
+		pingRedisRepo: repo,
 	}
 }
 
@@ -74,13 +73,9 @@ func (h *healthCheckHandler) DoCheck(c *gin.Context) {
 		return
 	}
 
-	// Check Redis connection
-	if h.redisClient != nil {
-		ctx := context.Background()
-		if err := h.redisClient.Ping(ctx).Err(); err != nil {
-			c.String(http.StatusInternalServerError, "Redis connection failed: %v", err)
-			return
-		}
+	err := h.pingRedisRepo.Ping(c)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	c.JSON(http.StatusOK, HealthCheckResponse{

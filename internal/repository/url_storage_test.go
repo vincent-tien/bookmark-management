@@ -60,16 +60,15 @@ func TestUrlStorage_GetUrl(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		setupMock   func() *redis.Client
+		setupMock   func(ctx context.Context) *redis.Client
 		code        string
 		expectedUrl string
 		expectErr   error
 	}{
 		{
 			name: "successfully get existing url",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				redisMock := redisPkg.InitMockRedis(t)
-				ctx := context.Background()
 				redisMock.Set(ctx, "12345678", "https://google.com", 0)
 				return redisMock
 			},
@@ -79,7 +78,7 @@ func TestUrlStorage_GetUrl(t *testing.T) {
 		},
 		{
 			name: "get non-existent key returns redis.Nil error",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				return redisPkg.InitMockRedis(t)
 			},
 			code:        "nonexistent",
@@ -88,15 +87,23 @@ func TestUrlStorage_GetUrl(t *testing.T) {
 		},
 		{
 			name: "get url with different code",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				redisMock := redisPkg.InitMockRedis(t)
-				ctx := context.Background()
 				redisMock.Set(ctx, "abcdefgh", "https://example.com", 0)
 				return redisMock
 			},
 			code:        "abcdefgh",
 			expectedUrl: "https://example.com",
 			expectErr:   nil,
+		},
+		{
+			name: "redis connection error",
+			setupMock: func(ctx context.Context) *redis.Client {
+				mock := redisPkg.InitMockRedis(t)
+				_ = mock.Close()
+				return mock
+			},
+			expectErr: redis.ErrClosed,
 		},
 	}
 
@@ -106,7 +113,7 @@ func TestUrlStorage_GetUrl(t *testing.T) {
 
 			ctx := t.Context()
 
-			redisMock := tc.setupMock()
+			redisMock := tc.setupMock(ctx)
 			testRepo := NewUrlStorage(redisMock)
 
 			url, err := testRepo.GetUrl(ctx, tc.code)
@@ -128,16 +135,15 @@ func TestUrlStorage_CheckKeyExists(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		setupMock      func() *redis.Client
+		setupMock      func(ctx context.Context) *redis.Client
 		code           string
 		expectedExists bool
 		expectErr      error
 	}{
 		{
 			name: "key exists returns true",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				redisMock := redisPkg.InitMockRedis(t)
-				ctx := context.Background()
 				redisMock.Set(ctx, "12345678", "https://google.com", 0)
 				return redisMock
 			},
@@ -147,7 +153,7 @@ func TestUrlStorage_CheckKeyExists(t *testing.T) {
 		},
 		{
 			name: "key does not exist returns false",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				return redisPkg.InitMockRedis(t)
 			},
 			code:           "nonexistent",
@@ -156,9 +162,8 @@ func TestUrlStorage_CheckKeyExists(t *testing.T) {
 		},
 		{
 			name: "check different existing key",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				redisMock := redisPkg.InitMockRedis(t)
-				ctx := context.Background()
 				redisMock.Set(ctx, "abcdefgh", "https://example.com", 0)
 				return redisMock
 			},
@@ -168,9 +173,8 @@ func TestUrlStorage_CheckKeyExists(t *testing.T) {
 		},
 		{
 			name: "check non-existent key with other keys present",
-			setupMock: func() *redis.Client {
+			setupMock: func(ctx context.Context) *redis.Client {
 				redisMock := redisPkg.InitMockRedis(t)
-				ctx := context.Background()
 				// Set a different key to ensure we're checking the right one
 				redisMock.Set(ctx, "otherkey", "https://other.com", 0)
 				return redisMock
@@ -178,6 +182,15 @@ func TestUrlStorage_CheckKeyExists(t *testing.T) {
 			code:           "notset",
 			expectedExists: false,
 			expectErr:      nil,
+		},
+		{
+			name: "redis connection error",
+			setupMock: func(ctx context.Context) *redis.Client {
+				mock := redisPkg.InitMockRedis(t)
+				_ = mock.Close()
+				return mock
+			},
+			expectErr: redis.ErrClosed,
 		},
 	}
 
@@ -187,7 +200,7 @@ func TestUrlStorage_CheckKeyExists(t *testing.T) {
 
 			ctx := t.Context()
 
-			redisMock := tc.setupMock()
+			redisMock := tc.setupMock(ctx)
 			testRepo := NewUrlStorage(redisMock)
 
 			exists, err := testRepo.CheckKeyExists(ctx, tc.code)

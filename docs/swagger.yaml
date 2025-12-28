@@ -62,7 +62,7 @@ paths:
       summary: health check
       tags:
       - utils
-  /links/shorten:
+  /v1/links/shorten:
     post:
       consumes:
       - application/json

@@ -14,22 +14,22 @@ func TestUrlShorten_Shorten(t *testing.T) {
 	t.Parallel()
 
 	var testCases = []struct {
-		name                string
-		setupMockUrlStorage func() *mocks.UrlStorage
-		request             dto.LinkShortenRequestDto
-		expectedError       error
-		validateResult      func(t *testing.T, code string, err error)
+		name                    string
+		setupMockUrlStorageRepo func() *mocks.UrlStorage
+		request                 dto.LinkShortenRequestDto
+		expectedError           error
+		validateResult          func(t *testing.T, code string, err error)
 	}{
 		{
 			name: "success",
-			setupMockUrlStorage: func() *mocks.UrlStorage {
+			setupMockUrlStorageRepo: func() *mocks.UrlStorage {
 				mockStorage := mocks.NewUrlStorage(t)
 				//// Mock CheckKeyExists to return false (key doesn't exist)
-				mockStorage.On("CheckKeyExists", t.Context(), mock.MatchedBy(func(code string) bool {
+				mockStorage.On("CheckKeyExists", mock.Anything, mock.MatchedBy(func(code string) bool {
 					return len(code) == 8
 				})).Return(false, nil)
 				// Mock Store to succeed
-				mockStorage.On("Store", t.Context(), mock.MatchedBy(func(code string) bool {
+				mockStorage.On("Store", mock.Anything, mock.MatchedBy(func(code string) bool {
 					return len(code) == 8
 				}), mock.Anything).Return(nil)
 
@@ -48,10 +48,10 @@ func TestUrlShorten_Shorten(t *testing.T) {
 		},
 		{
 			name: "key already exists",
-			setupMockUrlStorage: func() *mocks.UrlStorage {
+			setupMockUrlStorageRepo: func() *mocks.UrlStorage {
 				mockStorage := mocks.NewUrlStorage(t)
-				// Mock CheckKeyExists to return true (key exists)
-				mockStorage.On("CheckKeyExists", t.Context(), mock.MatchedBy(func(code string) bool {
+				// Mock CheckKeyExists to return true (key exists) - can be called multiple times during retries
+				mockStorage.On("CheckKeyExists", mock.Anything, mock.MatchedBy(func(code string) bool {
 					return len(code) == 8
 				})).Return(true, nil)
 
@@ -66,14 +66,14 @@ func TestUrlShorten_Shorten(t *testing.T) {
 		},
 		{
 			name: "Store returns error",
-			setupMockUrlStorage: func() *mocks.UrlStorage {
+			setupMockUrlStorageRepo: func() *mocks.UrlStorage {
 				mockStorage := mocks.NewUrlStorage(t)
 				// Mock CheckKeyExists to return false (key doesn't exist)
-				mockStorage.On("CheckKeyExists", t.Context(), mock.MatchedBy(func(code string) bool {
+				mockStorage.On("CheckKeyExists", mock.Anything, mock.MatchedBy(func(code string) bool {
 					return len(code) == 8
 				})).Return(false, nil)
 				// Mock Store to return an error
-				mockStorage.On("Store", t.Context(), mock.MatchedBy(func(code string) bool {
+				mockStorage.On("Store", mock.Anything, mock.MatchedBy(func(code string) bool {
 					return len(code) == 8
 				}), mock.Anything).Return(assert.AnError)
 
@@ -93,11 +93,11 @@ func TestUrlShorten_Shorten(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockStorage := tc.setupMockUrlStorage()
+			mockStorage := tc.setupMockUrlStorageRepo()
 			service := NewUrlShorten(mockStorage)
 
 			ctx := t.Context()
-			code, err := service.Shorten(ctx, tc.request)
+			code, err := service.Shorten(ctx, tc.request, 5)
 
 			if tc.validateResult != nil {
 				tc.validateResult(t, code, err)

@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
-	e "github.com/vincent-tien/bookmark-management/internal/errors"
 	"github.com/vincent-tien/bookmark-management/internal/service"
 )
 
@@ -42,7 +40,7 @@ func NewLinkShorten(svc service.UrlShorten) LinkShorten {
 // @Success      200 {object} dto.LinkShortenResponseDto
 // @Failure      400 {object} dto.ErrorResponse "Invalid request body or validation error"
 // @Failure      500 {object} dto.ErrorResponse "Internal server error"
-// @Router       /links/shorten [post]
+// @Router       /v1/links/shorten [post]
 func (s *linkShorten) Create(c *gin.Context) {
 	var req dto.LinkShortenRequestDto
 	var err error
@@ -54,23 +52,10 @@ func (s *linkShorten) Create(c *gin.Context) {
 	req.Prepare()
 
 	threshold := 5
-	var code string
-
-	for i := 0; i < threshold; i++ {
-		code, err = s.svc.Shorten(c, req)
-		// success
-		if err == nil && code != "" {
-			break
-		}
-
-		// retry if duplicate key
-		if errors.Is(err, e.ErrKeyAlreadyExists) {
-			continue
-		}
-	}
+	code, err := s.svc.Shorten(c, req, threshold)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
 

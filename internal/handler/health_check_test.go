@@ -7,24 +7,24 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/vincent-tien/bookmark-management/internal/config"
+	mocksRepository "github.com/vincent-tien/bookmark-management/internal/repository/mocks"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/service/mocks"
-	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
 )
 
 func TestUuidService_DoCheck(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name           string
-		setupRequest   func(ctx *gin.Context)
-		setupMockSvc   func() *mocks.Uuid
-		setupRedis     func() *redis.Client
-		expectedStatus int
-		expectedResp   string
+		name                   string
+		setupRequest           func(ctx *gin.Context)
+		setupMockSvc           func() *mocks.Uuid
+		setupMockPingRedisRepo func() *mocksRepository.PingRedis
+		expectedStatus         int
+		expectedResp           string
 	}{
 		{
 			name: "success case",
@@ -36,8 +36,10 @@ func TestUuidService_DoCheck(t *testing.T) {
 				mockSvc.On("Generate").Return("12345678-1234-5678-9abc-def012345678", nil)
 				return mockSvc
 			},
-			setupRedis: func() *redis.Client {
-				return redisPkg.InitMockRedis(t)
+			setupMockPingRedisRepo: func() *mocksRepository.PingRedis {
+				mockRepo := mocksRepository.NewPingRedis(t)
+				mockRepo.On("Ping", mock.Anything).Return(nil)
+				return mockRepo
 			},
 			expectedStatus: http.StatusOK,
 			expectedResp:   `{"message":"OK","service_name":"bookmark_service","instance_id":"12345678-1234-5678-9abc-def012345678"}`,
@@ -52,8 +54,8 @@ func TestUuidService_DoCheck(t *testing.T) {
 				mockSvc.On("Generate").Return("", errors.New("something wrong"))
 				return mockSvc
 			},
-			setupRedis: func() *redis.Client {
-				return redisPkg.InitMockRedis(t)
+			setupMockPingRedisRepo: func() *mocksRepository.PingRedis {
+				return mocksRepository.NewPingRedis(t)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedResp:   `Failed to generate uuid`,
@@ -68,14 +70,13 @@ func TestUuidService_DoCheck(t *testing.T) {
 				mockSvc.On("Generate").Return("12345678-1234-5678-9abc-def012345678", nil)
 				return mockSvc
 			},
-			setupRedis: func() *redis.Client {
-				// Create a Redis client with invalid address to simulate connection failure
-				return redis.NewClient(&redis.Options{
-					Addr: "invalid:6379",
-				})
+			setupMockPingRedisRepo: func() *mocksRepository.PingRedis {
+				mockRepo := mocksRepository.NewPingRedis(t)
+				mockRepo.On("Ping", mock.Anything).Return(errors.New("redis connection failed"))
+				return mockRepo
 			},
 			expectedStatus: http.StatusInternalServerError,
-			expectedResp:   `Redis connection failed:`,
+			expectedResp:   `Internal Server Error`,
 		},
 	}
 
@@ -93,14 +94,13 @@ func TestUuidService_DoCheck(t *testing.T) {
 			tc.setupRequest(ctx)
 
 			mockSvc := tc.setupMockSvc()
-			redisClient := tc.setupRedis()
+			redisClient := tc.setupMockPingRedisRepo()
 
 			handler := NewHealthCheck(mockSvc, cfg, redisClient)
 			handler.DoCheck(ctx)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
 			if tc.name == "internal server err - redis ping failed" {
-				// For Redis ping failure, just check that the response contains the error message
 				assert.Contains(t, rec.Body.String(), tc.expectedResp)
 			} else {
 				assert.Equal(t, tc.expectedResp, rec.Body.String())

@@ -14,6 +14,7 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
+	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
 )
 
 func TestLinkShortenEndpoint(t *testing.T) {
@@ -100,14 +101,15 @@ func TestLinkShortenEndpoint(t *testing.T) {
 	cfg := &config.Config{
 		ServiceName: "bookmark_service",
 		InstanceId:  "",
-		ApiVersion:  "v1",
 	}
+
+	mockRedis := redisPkg.InitMockRedis(t)
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app := apipkg.New(cfg)
+			app := apipkg.New(cfg, mockRedis)
 			rec := tc.setupTestHttp(app)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)

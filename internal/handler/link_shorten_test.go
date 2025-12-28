@@ -2,8 +2,10 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
-	e "github.com/vincent-tien/bookmark-management/internal/errors"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/service/mocks"
 )
@@ -24,7 +25,7 @@ func TestLinkShorten_Create(t *testing.T) {
 	testCases := []struct {
 		name           string
 		setupRequest   func(ctx *gin.Context)
-		setupMockSvc   func(t *testing.T) *mocks.UrlShorten
+		setupMockSvc   func(t *testing.T, ctx context.Context) *mocks.UrlShorten
 		expectedStatus int
 		expectedResp   string
 	}{
@@ -36,15 +37,15 @@ func TestLinkShorten_Create(t *testing.T) {
 					Url:          "https://google.com",
 				}
 				jsonData, _ := json.Marshal(reqBody)
-				ctx.Request = httptest.NewRequest(http.MethodPost, routers.Endpoints.LinkShorten, bytes.NewBuffer(jsonData))
+				ctx.Request = httptest.NewRequest(http.MethodPost, getEndpoint(), bytes.NewBuffer(jsonData))
 				ctx.Request.Header.Set("Content-Type", "application/json")
 			},
-			setupMockSvc: func(t *testing.T) *mocks.UrlShorten {
+			setupMockSvc: func(t *testing.T, ctx context.Context) *mocks.UrlShorten {
 				mockSvc := mocks.NewUrlShorten(t)
 				mockSvc.On("Shorten", mock.Anything, dto.LinkShortenRequestDto{
 					ExpInSeconds: 3600,
 					Url:          "https://google.com",
-				}).Return("foobar", nil)
+				}, 5).Return("foobar", nil)
 				return mockSvc
 			},
 			expectedStatus: http.StatusCreated,
@@ -53,10 +54,10 @@ func TestLinkShorten_Create(t *testing.T) {
 		{
 			name: "bad request - invalid JSON",
 			setupRequest: func(ctx *gin.Context) {
-				ctx.Request = httptest.NewRequest(http.MethodPost, routers.Endpoints.LinkShorten, strings.NewReader("invalid json"))
+				ctx.Request = httptest.NewRequest(http.MethodPost, getEndpoint(), strings.NewReader("invalid json"))
 				ctx.Request.Header.Set("Content-Type", "application/json")
 			},
-			setupMockSvc: func(t *testing.T) *mocks.UrlShorten {
+			setupMockSvc: func(t *testing.T, ctx context.Context) *mocks.UrlShorten {
 				return mocks.NewUrlShorten(t)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -67,10 +68,10 @@ func TestLinkShorten_Create(t *testing.T) {
 			setupRequest: func(ctx *gin.Context) {
 				reqBody := map[string]interface{}{}
 				jsonData, _ := json.Marshal(reqBody)
-				ctx.Request = httptest.NewRequest(http.MethodPost, routers.Endpoints.LinkShorten, bytes.NewBuffer(jsonData))
+				ctx.Request = httptest.NewRequest(http.MethodPost, getEndpoint(), bytes.NewBuffer(jsonData))
 				ctx.Request.Header.Set("Content-Type", "application/json")
 			},
-			setupMockSvc: func(t *testing.T) *mocks.UrlShorten {
+			setupMockSvc: func(t *testing.T, ctx context.Context) *mocks.UrlShorten {
 				return mocks.NewUrlShorten(t)
 			},
 			expectedStatus: http.StatusBadRequest,
@@ -84,44 +85,19 @@ func TestLinkShorten_Create(t *testing.T) {
 					Url:          "https://google.com",
 				}
 				jsonData, _ := json.Marshal(reqBody)
-				ctx.Request = httptest.NewRequest(http.MethodPost, routers.Endpoints.LinkShorten, bytes.NewBuffer(jsonData))
+				ctx.Request = httptest.NewRequest(http.MethodPost, getEndpoint(), bytes.NewBuffer(jsonData))
 				ctx.Request.Header.Set("Content-Type", "application/json")
 			},
-			setupMockSvc: func(t *testing.T) *mocks.UrlShorten {
+			setupMockSvc: func(t *testing.T, ctx context.Context) *mocks.UrlShorten {
 				mockSvc := mocks.NewUrlShorten(t)
 				mockSvc.On("Shorten", mock.Anything, dto.LinkShortenRequestDto{
 					ExpInSeconds: 3600,
 					Url:          "https://google.com",
-				}).Return("", errors.New("database error"))
+				}, 5).Return("", errors.New("database error"))
 				return mockSvc
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedResp:   "",
-		},
-		{
-			name: "duplicate key retry success",
-			setupRequest: func(ctx *gin.Context) {
-				reqBody := dto.LinkShortenRequestDto{
-					ExpInSeconds: 3600,
-					Url:          "https://google.com",
-				}
-				jsonData, _ := json.Marshal(reqBody)
-				ctx.Request = httptest.NewRequest(http.MethodPost, routers.Endpoints.LinkShorten, bytes.NewBuffer(jsonData))
-				ctx.Request.Header.Set("Content-Type", "application/json")
-			},
-			setupMockSvc: func(t *testing.T) *mocks.UrlShorten {
-				mockSvc := mocks.NewUrlShorten(t)
-				reqDto := dto.LinkShortenRequestDto{
-					ExpInSeconds: 3600,
-					Url:          "https://google.com",
-				}
-				// First call returns duplicate key error, second call succeeds
-				mockSvc.On("Shorten", mock.Anything, reqDto).Return("", e.ErrKeyAlreadyExists).Once()
-				mockSvc.On("Shorten", mock.Anything, reqDto).Return("xyz12345", nil).Once()
-				return mockSvc
-			},
-			expectedStatus: http.StatusCreated,
-			expectedResp:   `{"code":"xyz12345","message":"Shorten URL generated successfully!"}`,
 		},
 	}
 
@@ -133,7 +109,7 @@ func TestLinkShorten_Create(t *testing.T) {
 			ctx, _ := gin.CreateTestContext(rec)
 			tc.setupRequest(ctx)
 
-			mockSvc := tc.setupMockSvc(t)
+			mockSvc := tc.setupMockSvc(t, t.Context())
 			handler := NewLinkShorten(mockSvc)
 			handler.Create(ctx)
 
@@ -153,4 +129,8 @@ func TestLinkShorten_Create(t *testing.T) {
 			mockSvc.AssertExpectations(t)
 		})
 	}
+}
+
+func getEndpoint() string {
+	return fmt.Sprintf("/v1/%s", routers.Endpoints.LinkShorten)
 }
