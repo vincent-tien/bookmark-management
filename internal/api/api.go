@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -9,8 +10,10 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/handler"
+	"github.com/vincent-tien/bookmark-management/internal/repository"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/service"
+	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
 )
 
 // Engine defines the interface for the API engine.
@@ -50,12 +53,38 @@ func New(cfg *config.Config) Engine {
 		app: gin.New(),
 		cfg: cfg,
 	}
-	a.registerEP(cfg)
+	a.registerEP()
 	return a
 }
 
-func (a *api) registerEP(cfg *config.Config) {
+// registerEP registers all API endpoints and sets up their dependencies.
+func (a *api) registerEP() {
+	a.registerHealthCheckEndpoint()
+	a.registerLinkShortenEndpoint()
+}
+
+// registerHealthCheckEndpoint registers the health check endpoint.
+func (a *api) registerHealthCheckEndpoint() {
+	redisClient, _ := redisPkg.NewClient("")
+
 	uuidSvc := service.NewUuid()
-	uuidHandler := handler.NewHealthCheck(uuidSvc, cfg)
-	a.app.GET(routers.Endpoints.HealthCheck, uuidHandler.DoCheck)
+	healthCheckHandler := handler.NewHealthCheck(uuidSvc, a.cfg, redisClient)
+	a.app.GET(routers.Endpoints.HealthCheck, healthCheckHandler.DoCheck)
+}
+
+// registerLinkShortenEndpoint registers the link shorten endpoint.
+func (a *api) registerLinkShortenEndpoint() {
+	redisClient, err := redisPkg.NewClient("")
+	if err != nil {
+		log.Fatal("redis client error", err)
+	}
+
+	urlStorage := repository.NewUrlStorage(redisClient)
+	linkShortenSvc := service.NewUrlShorten(urlStorage)
+	linkShortenHandler := handler.NewLinkShorten(linkShortenSvc)
+
+	apiVersion := a.app.Group(fmt.Sprintf("/%s", a.cfg.ApiVersion))
+	{
+		apiVersion.POST(routers.Endpoints.LinkShorten, linkShortenHandler.Create)
+	}
 }
