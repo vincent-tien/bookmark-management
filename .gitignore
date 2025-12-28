@@ -60,4 +60,5 @@ temp/
 config.local.*
 
 /data/
+/redis
 coverage.*
