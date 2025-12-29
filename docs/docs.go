@@ -27,6 +27,96 @@ const docTemplate = `{
                 "summary": "health check",
                 "responses": {}
             }
+        },
+        "/v1/links/shorten": {
+            "post": {
+                "description": "Generate a short URL with expiration time",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Links"
+                ],
+                "summary": "Create a shortened link",
+                "parameters": [
+                    {
+                        "description": "Shorten link request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LinkShortenRequestDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LinkShortenResponseDto"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Error code\nexample: VALIDATION_ERROR",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Error message\nexample: invalid url format",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LinkShortenRequestDto": {
+            "type": "object",
+            "required": [
+                "url"
+            ],
+            "properties": {
+                "exp": {
+                    "description": "Expiration time in seconds for the shortened link\nMust be greater than or equal to 1\ndescription: Time-to-live of the shortened URL (TTL)\nminimum: 1\nexample: 3600",
+                    "type": "integer"
+                },
+                "url": {
+                    "description": "Original URL that will be shortened\nMust be a valid URL format (http or https)\n\nrequired: true\nformat: url\nexample: https://example.com",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LinkShortenResponseDto": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Short code of the generated URL\nexample: abc123",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Success message\nexample: Shorten URL generated successfully!",
+                    "type": "string"
+                }
+            }
         }
     }
 }`

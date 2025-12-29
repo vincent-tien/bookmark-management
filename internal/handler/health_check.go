@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/vincent-tien/bookmark-management/internal/config"
+	"github.com/vincent-tien/bookmark-management/internal/repository"
 	"github.com/vincent-tien/bookmark-management/internal/service"
 )
 
@@ -18,16 +19,17 @@ type HealthCheck interface {
 }
 
 type healthCheckHandler struct {
-	svc  service.Uuid
-	cfg  *config.Config
-	uuid string
+	svc           service.Uuid
+	cfg           *config.Config
+	uuid          string
+	pingRedisRepo repository.PingRedis
 }
 
 // NewHealthCheck creates and returns a new health check handler instance.
-// It initializes the handler with a UUID service and configuration.
+// It initializes the handler with a UUID service, configuration, and Redis client.
 // If no instance ID is provided in the config, it generates a new UUID.
 // Returns a HealthCheck interface implementation.
-func NewHealthCheck(svc service.Uuid, cfg *config.Config) HealthCheck {
+func NewHealthCheck(svc service.Uuid, cfg *config.Config, repo repository.PingRedis) HealthCheck {
 	var err error
 
 	uuid := cfg.InstanceId
@@ -42,9 +44,10 @@ func NewHealthCheck(svc service.Uuid, cfg *config.Config) HealthCheck {
 	}
 
 	return &healthCheckHandler{
-		svc:  svc,
-		cfg:  cfg,
-		uuid: uuid,
+		svc:           svc,
+		cfg:           cfg,
+		uuid:          uuid,
+		pingRedisRepo: repo,
 	}
 }
 
@@ -56,8 +59,8 @@ type HealthCheckResponse struct {
 }
 
 // DoCheck performs a health check and returns the service status.
-// It responds with the service name and instance ID.
-// Returns HTTP 200 OK if the service is healthy, or HTTP 500 if UUID generation failed.
+// It checks the Redis connection and responds with the service name and instance ID.
+// Returns HTTP 200 OK if the service is healthy, or HTTP 500 if UUID generation failed or Redis ping fails.
 //
 //	@Summary		health check
 //	@Tags		utils
@@ -67,11 +70,18 @@ type HealthCheckResponse struct {
 func (h *healthCheckHandler) DoCheck(c *gin.Context) {
 	if h.uuid == "" {
 		c.String(http.StatusInternalServerError, "Failed to generate uuid")
-	} else {
-		c.JSON(http.StatusOK, HealthCheckResponse{
-			Message:     "OK",
-			ServiceName: h.cfg.ServiceName,
-			InstanceId:  h.uuid,
-		})
+		return
 	}
+
+	err := h.pingRedisRepo.Ping(c)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	c.JSON(http.StatusOK, HealthCheckResponse{
+		Message:     "OK",
+		ServiceName: h.cfg.ServiceName,
+		InstanceId:  h.uuid,
+	})
 }

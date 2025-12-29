@@ -1,0 +1,13 @@
+services:
+  ### Redis ################################################
+  redis:
+    container_name: 'ebvn-redis'
+    build:
+      context: ./dbms/redis
+      args:
+        REDIS_VERSION: latest
+    volumes:
+      - ./../redis:/data
+    command: ["redis-server", "--dir", "/data", "--dbfilename", "dump.rdb"]
+    ports:
+      - "6379:6379"

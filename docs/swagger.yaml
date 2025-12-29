@@ -1,3 +1,52 @@
+definitions:
+  dto.ErrorResponse:
+    properties:
+      code:
+        description: |-
+          Error code
+          example: VALIDATION_ERROR
+        type: string
+      message:
+        description: |-
+          Error message
+          example: invalid url format
+        type: string
+    type: object
+  dto.LinkShortenRequestDto:
+    properties:
+      exp:
+        description: |-
+          Expiration time in seconds for the shortened link
+          Must be greater than or equal to 1
+          description: Time-to-live of the shortened URL (TTL)
+          minimum: 1
+          example: 3600
+        type: integer
+      url:
+        description: |-
+          Original URL that will be shortened
+          Must be a valid URL format (http or https)
+
+          required: true
+          format: url
+          example: https://example.com
+        type: string
+    required:
+    - url
+    type: object
+  dto.LinkShortenResponseDto:
+    properties:
+      code:
+        description: |-
+          Short code of the generated URL
+          example: abc123
+        type: string
+      message:
+        description: |-
+          Success message
+          example: Shorten URL generated successfully!
+        type: string
+    type: object
 info:
   contact: {}
   description: Bookmark Management API is a RESTful service
@@ -13,4 +62,34 @@ paths:
       summary: health check
       tags:
       - utils
+  /v1/links/shorten:
+    post:
+      consumes:
+      - application/json
+      description: Generate a short URL with expiration time
+      parameters:
+      - description: Shorten link request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LinkShortenRequestDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LinkShortenResponseDto'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a shortened link
+      tags:
+      - Links
 swagger: "2.0"

@@ -9,6 +9,7 @@ import (
 	apipkg "github.com/vincent-tien/bookmark-management/internal/api"
 	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
+	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
 )
 
 func TestHealthCheckEndpoint(t *testing.T) {
@@ -40,7 +41,9 @@ func TestHealthCheckEndpoint(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			app := apipkg.New(cfg)
+			mockRedis := redisPkg.InitMockRedis(t)
+
+			app := apipkg.New(cfg, mockRedis)
 			rec := tc.setupTestHttp(app)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
