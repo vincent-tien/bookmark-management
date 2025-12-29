@@ -16,7 +16,10 @@ func main() {
 		panic(err)
 	}
 
-	redisClient, _ := redisPkg.NewClient("")
+	redisClient, err := redisPkg.NewClient("")
+	if err != nil {
+		panic(err)
+	}
 	app := api.New(cfg, redisClient)
 	err = app.Start()
 	if err != nil {
