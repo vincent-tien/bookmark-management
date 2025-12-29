@@ -21,7 +21,7 @@ const (
 type UrlShorten interface {
 	// Shorten generates a short code for the given URL and stores the mapping.
 	// It returns the generated short code and an error if the operation fails.
-	Shorten(ctx context.Context, r dto.LinkShortenRequestDto, threshold ...int) (string, error)
+	Shorten(ctx context.Context, r dto.LinkShortenRequestDto) (string, error)
 }
 
 type urlShorten struct {
@@ -40,7 +40,7 @@ func NewUrlShorten(repo repository.UrlStorage) UrlShorten {
 // Shorten generates a short code for the given URL and stores the mapping.
 // It creates a random code, checks for duplicates, and stores the URL with expiration.
 // Returns the generated short code and an error if the operation fails.
-func (s *urlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto, threshold ...int) (string, error) {
+func (s *urlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto) (string, error) {
 	var code string
 	var err error
 	var foundValidCode bool

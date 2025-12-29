@@ -14,16 +14,9 @@ type UrlShorten struct {
 	mock.Mock
 }
 
-// Shorten provides a mock function with given fields: ctx, r, threshold
-func (_m *UrlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto, threshold ...int) (string, error) {
-	_va := make([]interface{}, len(threshold))
-	for _i := range threshold {
-		_va[_i] = threshold[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, r)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Shorten provides a mock function with given fields: ctx, r
+func (_m *UrlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto) (string, error) {
+	ret := _m.Called(ctx, r)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Shorten")
@@ -31,17 +24,17 @@ func (_m *UrlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto, 
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, dto.LinkShortenRequestDto, ...int) (string, error)); ok {
-		return rf(ctx, r, threshold...)
+	if rf, ok := ret.Get(0).(func(context.Context, dto.LinkShortenRequestDto) (string, error)); ok {
+		return rf(ctx, r)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, dto.LinkShortenRequestDto, ...int) string); ok {
-		r0 = rf(ctx, r, threshold...)
+	if rf, ok := ret.Get(0).(func(context.Context, dto.LinkShortenRequestDto) string); ok {
+		r0 = rf(ctx, r)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, dto.LinkShortenRequestDto, ...int) error); ok {
-		r1 = rf(ctx, r, threshold...)
+	if rf, ok := ret.Get(1).(func(context.Context, dto.LinkShortenRequestDto) error); ok {
+		r1 = rf(ctx, r)
 	} else {
 		r1 = ret.Error(1)
 	}

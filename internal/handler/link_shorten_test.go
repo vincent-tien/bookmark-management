@@ -40,7 +40,7 @@ func TestLinkShorten_Create(t *testing.T) {
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.UrlShorten {
 				mockSvc := mocks.NewUrlShorten(t)
-				mockSvc.On("Shorten", ctx.Request.Context(), dto.LinkShortenRequestDto{
+				mockSvc.On("Shorten", ctx, dto.LinkShortenRequestDto{
 					ExpInSeconds: 3600,
 					Url:          "https://google.com",
 				}).Return("foobar", nil)
@@ -88,7 +88,7 @@ func TestLinkShorten_Create(t *testing.T) {
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.UrlShorten {
 				mockSvc := mocks.NewUrlShorten(t)
-				mockSvc.On("Shorten", ctx.Request.Context(), dto.LinkShortenRequestDto{
+				mockSvc.On("Shorten", ctx, dto.LinkShortenRequestDto{
 					ExpInSeconds: 3600,
 					Url:          "https://google.com",
 				}).Return("", errors.New("redis error"))
