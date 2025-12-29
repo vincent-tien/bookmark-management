@@ -51,8 +51,7 @@ func (s *linkShorten) Create(c *gin.Context) {
 
 	req.Prepare()
 
-	threshold := 5
-	code, err := s.svc.Shorten(c, req, threshold)
+	code, err := s.svc.Shorten(c.Request.Context(), req)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})

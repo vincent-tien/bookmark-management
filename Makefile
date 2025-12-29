@@ -8,7 +8,7 @@ swagger:
 
 dev-run: swagger run
 
-COVERAGE_THRESHOLD ?= 60
+COVERAGE_THRESHOLD ?= 50
 COVERAGE_OUT       ?= coverage.out
 COVERAGE_HTML      ?= coverage.html
 

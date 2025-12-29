@@ -40,10 +40,10 @@ func TestLinkShorten_Create(t *testing.T) {
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.UrlShorten {
 				mockSvc := mocks.NewUrlShorten(t)
-				mockSvc.On("Shorten", ctx, dto.LinkShortenRequestDto{
+				mockSvc.On("Shorten", ctx.Request.Context(), dto.LinkShortenRequestDto{
 					ExpInSeconds: 3600,
 					Url:          "https://google.com",
-				}, 5).Return("foobar", nil)
+				}).Return("foobar", nil)
 				return mockSvc
 			},
 			expectedStatus: http.StatusCreated,
@@ -88,10 +88,10 @@ func TestLinkShorten_Create(t *testing.T) {
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.UrlShorten {
 				mockSvc := mocks.NewUrlShorten(t)
-				mockSvc.On("Shorten", ctx, dto.LinkShortenRequestDto{
+				mockSvc.On("Shorten", ctx.Request.Context(), dto.LinkShortenRequestDto{
 					ExpInSeconds: 3600,
 					Url:          "https://google.com",
-				}, 5).Return("", errors.New("database error"))
+				}).Return("", errors.New("redis error"))
 				return mockSvc
 			},
 			expectedStatus: http.StatusInternalServerError,
