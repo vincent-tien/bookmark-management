@@ -100,11 +100,7 @@ func TestUuidService_DoCheck(t *testing.T) {
 			handler.DoCheck(ctx)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
-			if tc.name == "internal server err - redis ping failed" {
-				assert.Contains(t, rec.Body.String(), tc.expectedResp)
-			} else {
-				assert.Equal(t, tc.expectedResp, rec.Body.String())
-			}
+			assert.Equal(t, tc.expectedResp, rec.Body.String())
 		})
 	}
 }

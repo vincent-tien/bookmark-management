@@ -76,6 +76,7 @@ func (h *healthCheckHandler) DoCheck(c *gin.Context) {
 	err := h.pingRedisRepo.Ping(c)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Internal Server Error")
+		return
 	}
 
 	c.JSON(http.StatusOK, HealthCheckResponse{

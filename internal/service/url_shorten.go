@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	urlCodeLength = 8
+	urlCodeLength    = 8
+	defaultThreshold = 5
 )
 
 //go:generate mockery --name=UrlShorten --filename=url_shorten.go
@@ -20,7 +21,7 @@ const (
 type UrlShorten interface {
 	// Shorten generates a short code for the given URL and stores the mapping.
 	// It returns the generated short code and an error if the operation fails.
-	Shorten(ctx context.Context, r dto.LinkShortenRequestDto, threshold int) (string, error)
+	Shorten(ctx context.Context, r dto.LinkShortenRequestDto, threshold ...int) (string, error)
 }
 
 type urlShorten struct {
@@ -39,12 +40,14 @@ func NewUrlShorten(repo repository.UrlStorage) UrlShorten {
 // Shorten generates a short code for the given URL and stores the mapping.
 // It creates a random code, checks for duplicates, and stores the URL with expiration.
 // Returns the generated short code and an error if the operation fails.
-func (s *urlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto, threshold int) (string, error) {
+func (s *urlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto, threshold ...int) (string, error) {
 	var code string
 	var err error
 	var foundValidCode bool
 
-	for i := 0; i < threshold; i++ {
+	t := defaultThreshold
+
+	for i := 0; i < t; i++ {
 		code, err = utils.GenerateRandomString(urlCodeLength)
 		if err != nil {
 			continue
