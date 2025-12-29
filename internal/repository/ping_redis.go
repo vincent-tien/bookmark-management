@@ -6,6 +6,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// PingRedis defines an interface for checking the connectivity to a Redis database.
+// It provides a method to ping the Redis server for health and availability verification.
+//
 //go:generate mockery --name=PingRedis --filename=ping_redis.go
 type PingRedis interface {
 	Ping(ctx context.Context) error

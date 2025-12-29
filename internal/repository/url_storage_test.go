@@ -118,14 +118,8 @@ func TestUrlStorage_GetUrl(t *testing.T) {
 
 			url, err := testRepo.GetUrl(ctx, tc.code)
 
-			if tc.expectErr != nil {
-				assert.Error(t, err)
-				assert.Equal(t, tc.expectErr, err)
-				assert.Empty(t, url)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedUrl, url)
-			}
+			assert.Equal(t, url, tc.expectedUrl)
+			assert.ErrorIs(t, err, tc.expectErr)
 		})
 	}
 }
@@ -205,13 +199,8 @@ func TestUrlStorage_CheckKeyExists(t *testing.T) {
 
 			exists, err := testRepo.CheckKeyExists(ctx, tc.code)
 
-			if tc.expectErr != nil {
-				assert.Error(t, err)
-				assert.Equal(t, tc.expectErr, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedExists, exists)
-			}
+			assert.Equal(t, exists, tc.expectedExists)
+			assert.ErrorIs(t, err, tc.expectErr)
 		})
 	}
 }

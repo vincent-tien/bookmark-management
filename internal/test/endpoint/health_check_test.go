@@ -37,11 +37,11 @@ func TestHealthCheckEndpoint(t *testing.T) {
 		InstanceId:  "",
 	}
 
-	mockRedis := redisPkg.InitMockRedis(t)
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			mockRedis := redisPkg.InitMockRedis(t)
 
 			app := apipkg.New(cfg, mockRedis)
 			rec := tc.setupTestHttp(app)
