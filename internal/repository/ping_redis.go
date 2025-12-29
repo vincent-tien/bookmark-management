@@ -11,6 +11,7 @@ import (
 //
 //go:generate mockery --name=PingRedis --filename=ping_redis.go
 type PingRedis interface {
+	// Ping checks the connectivity to the Redis server.
 	Ping(ctx context.Context) error
 }
 
