@@ -10,5 +10,5 @@ type Routes struct {
 var Endpoints = Routes{
 	HealthCheck:  "/health-check",
 	LinkShorten:  "/links/shorten",
-	LinkRedirect: "/links/redirect/:code",
+	LinkRedirect: "/links/redirect/*code",
 }

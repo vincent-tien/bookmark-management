@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
@@ -84,7 +85,8 @@ func (s *linkShorten) Create(c *gin.Context) {
 // @Failure      500 {object} dto.ErrorResponse "Internal server error"
 // @Router       /v1/links/redirect/{code} [get]
 func (s *linkShorten) Redirect(c *gin.Context) {
-	code := c.Param("code")
+	rawCode := c.Param("code")
+	code := strings.TrimPrefix(rawCode, "/")
 	if code == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "code parameter is required"})
 		return
