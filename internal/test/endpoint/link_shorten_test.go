@@ -2,12 +2,14 @@ package endpoint
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apipkg "github.com/vincent-tien/bookmark-management/internal/api"
@@ -129,6 +131,111 @@ func TestLinkShortenEndpoint(t *testing.T) {
 	}
 }
 
+func TestRedirectLinkEndpoint(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name           string
+		setupTestHttp  func(api apipkg.Engine, mockRedis *redis.Client) *httptest.ResponseRecorder
+		expectedStatus int
+		expectedLoc    string
+	}{
+		{
+			name: "success case",
+			setupTestHttp: func(api apipkg.Engine, mockRedis *redis.Client) *httptest.ResponseRecorder {
+				// Pre-populate Redis with a code->URL mapping
+				ctx := context.Background()
+				mockRedis.Set(ctx, "testcode123", "https://google.com", 0)
+
+				req := httptest.NewRequest(http.MethodGet, getRedirectEndpoint("testcode123"), nil)
+				rec := httptest.NewRecorder()
+				api.ServeHTTP(rec, req)
+				return rec
+			},
+			expectedStatus: http.StatusFound,
+			expectedLoc:    "https://google.com",
+		},
+		{
+			name: "not found - URL not found",
+			setupTestHttp: func(api apipkg.Engine, mockRedis *redis.Client) *httptest.ResponseRecorder {
+				req := httptest.NewRequest(http.MethodGet, getRedirectEndpoint("nonexistent"), nil)
+				rec := httptest.NewRecorder()
+				api.ServeHTTP(rec, req)
+				return rec
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedLoc:    "",
+		},
+		{
+			name: "bad request - empty code",
+			setupTestHttp: func(api apipkg.Engine, mockRedis *redis.Client) *httptest.ResponseRecorder {
+				// Test with empty code parameter (trailing slash makes code empty)
+				req := httptest.NewRequest(http.MethodGet, "/v1/links/redirect/", nil)
+				rec := httptest.NewRecorder()
+				api.ServeHTTP(rec, req)
+				return rec
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedLoc:    "",
+		},
+		{
+			name: "success case - different URL",
+			setupTestHttp: func(api apipkg.Engine, mockRedis *redis.Client) *httptest.ResponseRecorder {
+				// Pre-populate Redis with a different code->URL mapping
+				ctx := context.Background()
+				mockRedis.Set(ctx, "abc12345", "https://example.com", 0)
+
+				req := httptest.NewRequest(http.MethodGet, getRedirectEndpoint("abc12345"), nil)
+				rec := httptest.NewRecorder()
+				api.ServeHTTP(rec, req)
+				return rec
+			},
+			expectedStatus: http.StatusFound,
+			expectedLoc:    "https://example.com",
+		},
+	}
+
+	cfg := &config.Config{
+		ServiceName: "bookmark_service",
+		InstanceId:  "",
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockRedis := redisPkg.InitMockRedis(t)
+
+			app := apipkg.New(cfg, mockRedis)
+			rec := tc.setupTestHttp(app, mockRedis)
+
+			assert.Equal(t, tc.expectedStatus, rec.Code)
+			if tc.expectedStatus == http.StatusFound {
+				// Check redirect location header
+				assert.Equal(t, tc.expectedLoc, rec.Header().Get("Location"))
+			} else if tc.expectedStatus == http.StatusNotFound {
+				var resp struct {
+					Error string `json:"error"`
+				}
+				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+				assert.Contains(t, resp.Error, "not found")
+			} else if tc.expectedStatus == http.StatusBadRequest {
+				var resp struct {
+					Error string `json:"error"`
+				}
+				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+				assert.Contains(t, resp.Error, "code parameter is required")
+			}
+		})
+	}
+}
+
 func getApiEndpoint() string {
 	return "/v1" + routers.Endpoints.LinkShorten
+}
+
+func getRedirectEndpoint(code string) string {
+	// The route uses wildcard *code, so we append the code directly
+	basePath := "/v1" + strings.TrimSuffix(routers.Endpoints.LinkRedirect, "*code")
+	return basePath + code
 }

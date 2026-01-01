@@ -97,7 +97,7 @@ func TestUrlShorten_Shorten(t *testing.T) {
 			service := NewUrlShorten(mockStorage)
 
 			ctx := t.Context()
-			code, err := service.Shorten(ctx, tc.request, 5)
+			code, err := service.Shorten(ctx, tc.request)
 
 			if tc.validateResult != nil {
 				tc.validateResult(t, code, err)
@@ -109,6 +109,50 @@ func TestUrlShorten_Shorten(t *testing.T) {
 					assert.NoError(t, err)
 				}
 			}
+		})
+	}
+}
+
+func TestUrlShorten_GetUrl(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name                    string
+		setupMockUrlStorageRepo func() *mocks.UrlStorage
+		validateResult          func(t *testing.T, code string, err error)
+	}{
+		{
+			name: "normal case",
+			setupMockUrlStorageRepo: func() *mocks.UrlStorage {
+				mockStorage := mocks.NewUrlStorage(t)
+				//// Mock CheckKeyExists to return false (key doesn't exist)
+				mockStorage.On("GetUrl", mock.Anything, mock.MatchedBy(func(code string) bool {
+					return len(code) == 8
+				})).Return("https://google.com", nil)
+
+				return mockStorage
+			},
+			validateResult: func(t *testing.T, url string, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "https://google.com", url)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockStorage := tc.setupMockUrlStorageRepo()
+			service := NewUrlShorten(mockStorage)
+
+			ctx := t.Context()
+
+			code := "12345678"
+			url, err := service.GetUrl(ctx, code)
+
+			tc.validateResult(t, url, err)
 		})
 	}
 }

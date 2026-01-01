@@ -62,6 +62,33 @@ paths:
       summary: health check
       tags:
       - utils
+  /v1/links/redirect/{code}:
+    get:
+      consumes:
+      - application/json
+      description: Redirects user to the original URL based on the short code
+      parameters:
+      - description: Short code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to original URL
+        "404":
+          description: URL not found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Redirect to original URL
+      tags:
+      - Links
   /v1/links/shorten:
     post:
       consumes:

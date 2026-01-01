@@ -85,5 +85,6 @@ func (a *api) registerLinkShortenEndpoint() {
 	apiVersion := a.app.Group(fmt.Sprintf("/%s", Version))
 	{
 		apiVersion.POST(routers.Endpoints.LinkShorten, linkShortenHandler.Create)
+		apiVersion.GET(routers.Endpoints.LinkRedirect, linkShortenHandler.Redirect)
 	}
 }

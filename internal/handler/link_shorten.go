@@ -1,10 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
+	e "github.com/vincent-tien/bookmark-management/internal/errors"
 	"github.com/vincent-tien/bookmark-management/internal/service"
 )
 
@@ -14,6 +18,9 @@ type LinkShorten interface {
 	// Create handles the creation of a shortened link.
 	// It validates the request, generates a short code, and stores the mapping.
 	Create(c *gin.Context)
+	// Redirect handles the redirection to the original URL based on the code.
+	// It retrieves the original URL and redirects the user to it.
+	Redirect(c *gin.Context)
 }
 
 type linkShorten struct {
@@ -54,6 +61,7 @@ func (s *linkShorten) Create(c *gin.Context) {
 	code, err := s.svc.Shorten(c, req)
 
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to shorten URL")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
@@ -63,4 +71,42 @@ func (s *linkShorten) Create(c *gin.Context) {
 		Message: "Shorten URL generated successfully!",
 	}
 	c.JSON(http.StatusCreated, res)
+}
+
+// Redirect RedirectLink godoc
+//
+// @Summary      Redirect to original URL
+// @Description  Redirects user to the original URL based on the short code
+// @Tags         Links
+// @Accept       json
+// @Produce      json
+// @Param        code path string true "Short code"
+// @Success      302 "Redirect to original URL"
+// @Failure      404 {object} dto.ErrorResponse "URL not found"
+// @Failure      500 {object} dto.ErrorResponse "Internal server error"
+// @Router       /v1/links/redirect/{code} [get]
+func (s *linkShorten) Redirect(c *gin.Context) {
+	rawCode := c.Param("code")
+	code := strings.TrimPrefix(rawCode, "/")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "code parameter is required"})
+		return
+	}
+
+	url, err := s.svc.GetUrl(c, code)
+	if err != nil {
+		// Check if it's a not found error
+		if errors.Is(err, e.ErrUrlNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "URL not found"})
+			return
+		}
+
+		log.Error().Err(err).Msg("Failed to get URL")
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		return
+	}
+
+	// Redirect to the original URL
+	c.Redirect(http.StatusFound, url)
 }

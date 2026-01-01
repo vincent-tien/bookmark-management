@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	e "github.com/vincent-tien/bookmark-management/internal/errors"
 	"github.com/vincent-tien/bookmark-management/internal/repository"
@@ -22,6 +24,9 @@ type UrlShorten interface {
 	// Shorten generates a short code for the given URL and stores the mapping.
 	// It returns the generated short code and an error if the operation fails.
 	Shorten(ctx context.Context, r dto.LinkShortenRequestDto) (string, error)
+	// GetUrl retrieves the original URL associated with the given code.
+	// It returns the original URL and an error if the code is not found or retrieval fails.
+	GetUrl(ctx context.Context, code string) (string, error)
 }
 
 type urlShorten struct {
@@ -76,4 +81,18 @@ func (s *urlShorten) Shorten(ctx context.Context, r dto.LinkShortenRequestDto) (
 	}
 
 	return code, nil
+}
+
+// GetUrl retrieves the original URL associated with the given code.
+// It returns the original URL and an error if the code is not found or retrieval fails.
+func (s *urlShorten) GetUrl(ctx context.Context, code string) (string, error) {
+	url, err := s.repo.GetUrl(ctx, code)
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", e.ErrUrlNotFound
+		}
+		return "", err
+	}
+
+	return url, nil
 }
