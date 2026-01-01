@@ -1,6 +1,7 @@
 package handler
 
 import (
+	logPkg "github.com/rs/zerolog/log"
 	"log"
 	"net/http"
 
@@ -75,6 +76,7 @@ func (h *healthCheckHandler) DoCheck(c *gin.Context) {
 
 	err := h.pingRedisRepo.Ping(c)
 	if err != nil {
+		logPkg.Error().Err(err).Msg("Failed to ping Redis")
 		c.String(http.StatusInternalServerError, "Internal Server Error")
 		return
 	}

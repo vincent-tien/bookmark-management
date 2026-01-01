@@ -61,6 +61,7 @@ func (s *linkShorten) Create(c *gin.Context) {
 	code, err := s.svc.Shorten(c, req)
 
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to shorten URL")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
