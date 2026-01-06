@@ -85,7 +85,7 @@ docker-test:
 		else {printf "✅ Coverage (%.2f%%) meets threshold (%.2f%%)\n", t, th; exit 0} \
 	}'
 
-GOLANG_LINT_VERSION ?= v1.56.2
+GOLANG_LINT_VERSION ?= v2.7.2
 
 docker-lint:
 	@set -eu; \

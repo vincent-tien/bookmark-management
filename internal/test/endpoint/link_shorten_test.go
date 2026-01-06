@@ -115,9 +115,10 @@ func TestLinkShortenEndpoint(t *testing.T) {
 			rec := tc.setupTestHttp(app)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
-			if tc.expectedStatus == http.StatusBadRequest {
+			switch tc.expectedStatus {
+			case http.StatusBadRequest:
 				assert.Contains(t, rec.Body.String(), "error")
-			} else if tc.expectedStatus == http.StatusCreated {
+			case http.StatusCreated:
 				var resp struct {
 					Code    string `json:"code"`
 					Message string `json:"message"`
@@ -210,16 +211,17 @@ func TestRedirectLinkEndpoint(t *testing.T) {
 			rec := tc.setupTestHttp(app, mockRedis)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
-			if tc.expectedStatus == http.StatusFound {
+			switch tc.expectedStatus {
+			case http.StatusFound:
 				// Check redirect location header
 				assert.Equal(t, tc.expectedLoc, rec.Header().Get("Location"))
-			} else if tc.expectedStatus == http.StatusNotFound {
+			case http.StatusNotFound:
 				var resp struct {
 					Error string `json:"error"`
 				}
 				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 				assert.Contains(t, resp.Error, "not found")
-			} else if tc.expectedStatus == http.StatusBadRequest {
+			case http.StatusBadRequest:
 				var resp struct {
 					Error string `json:"error"`
 				}

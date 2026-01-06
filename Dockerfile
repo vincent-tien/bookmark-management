@@ -75,7 +75,7 @@ RUN apk add --no-cache curl git
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
   | sh -s -- -b /usr/local/bin ${GOLANG_LINT_VERSION}
 
-RUN golangci-lint run --timeout=5m --build-tags=test
+RUN golangci-lint run
 
 
 # =====================
