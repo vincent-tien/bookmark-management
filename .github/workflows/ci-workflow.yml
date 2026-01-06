@@ -12,6 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check lint
+        if: ${{ github.event_name != 'pull_request' }}
+        run: make docker-lint
+
       - name: Run test
         run: make docker-test
 
