@@ -8,6 +8,7 @@ type Config struct {
 	AppPort     string `default:"8080" envconfig:"APP_PORT"`                 // Port on which the application runs
 	ServiceName string `default:"bookmark_service" envconfig:"SERVICE_NAME"` // Name of the service
 	InstanceId  string `envconfig:"INSTANCE_ID"`                             // Unique instance identifier
+	AppHostName string `default:"localhost:8080" envconfig:"APP_HOSTNAME"`
 }
 
 // NewConfig creates a new Config instance by loading values from environment variables.

@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/vincent-tien/bookmark-management/docs"
 	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/handler"
 	"github.com/vincent-tien/bookmark-management/internal/repository"
@@ -40,6 +41,7 @@ type api struct {
 // It also registers the Swagger documentation endpoint.
 // Returns an error if the server fails to start.
 func (a *api) Start() error {
+	docs.SwaggerInfo.Host = a.cfg.AppHostName
 	a.app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	return a.app.Run(fmt.Sprintf(":%s", a.cfg.AppPort))
 }
