@@ -9,7 +9,7 @@ import (
 )
 
 // @title	Bookmark Management API
-// @version	1.0
+// @version	1.0.2
 // @description	Bookmark Management API is a RESTful service
 func main() {
 	logger.SetLogLevel()

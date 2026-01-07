@@ -51,7 +51,7 @@ info:
   contact: {}
   description: Bookmark Management API is a RESTful service
   title: Bookmark Management API
-  version: "1.0"
+  version: 1.0.2
 paths:
   /health-check:
     get:
