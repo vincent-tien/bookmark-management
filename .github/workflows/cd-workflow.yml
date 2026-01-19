@@ -16,21 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug repo structure
-        run: |
-          echo "WORKSPACE=$GITHUB_WORKSPACE"
-          pwd
-          ls -la
-          find . -maxdepth 2 -type d -print
-          find . -maxdepth 4 -type f \( -name "docker-compose*.yml" -o -name "docker-compose*.yaml" -o -name "compose*.yml" -o -name "compose*.yaml" \) -print  
-
-      - name: Find compose file
-        run: |
-          find . -maxdepth 6 -type f \
-            \( -name "docker-compose*.yml" -o -name "docker-compose*.yaml" -o -name "compose*.yml" -o -name "compose*.yaml" \) \
-            -print
-
       - name: Deploy bookmark service
+        working-directory: /root/webapp
         run: |
           docker compose pull bookmark_service
           docker compose up -d bookmark_service
