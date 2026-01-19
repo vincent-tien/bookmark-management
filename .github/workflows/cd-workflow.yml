@@ -17,6 +17,6 @@ jobs:
       - name: Deploy bookmark service
 #        working-directory: /root/bookmark-management/deployment
         run: |
-          docker-compose pull bookmark_service
-          docker-compose up -d bookmark_service
+          docker compose pull bookmark_service
+          docker compose up -d bookmark_service
           docker system prune -f
