@@ -24,6 +24,12 @@ jobs:
           find . -maxdepth 2 -type d -print
           find . -maxdepth 4 -type f \( -name "docker-compose*.yml" -o -name "docker-compose*.yaml" -o -name "compose*.yml" -o -name "compose*.yaml" \) -print  
 
+      - name: Find compose file
+        run: |
+          find . -maxdepth 6 -type f \
+            \( -name "docker-compose*.yml" -o -name "docker-compose*.yaml" -o -name "compose*.yml" -o -name "compose*.yaml" \) \
+            -print
+
       - name: Deploy bookmark service
         run: |
           docker compose pull bookmark_service
