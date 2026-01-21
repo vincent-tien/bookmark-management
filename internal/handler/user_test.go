@@ -102,7 +102,9 @@ func TestUser_Register(t *testing.T) {
 			name: "bad request - password too short",
 			setupRequest: func(ctx *gin.Context) {
 				reqBody := validRegisterRequest()
-				reqBody.Password = "short" //nolint:gosec // This is test data, not a real credential
+				//nolint:gosec // NOSONAR - This is test data, not a real credential
+				shortPassword := "short"
+				reqBody.Password = shortPassword // NOSONAR - test data for validation testing
 				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), reqBody)
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
@@ -166,7 +168,7 @@ func validRegisterRequest() dto.RegisterRequestDto {
 	return dto.RegisterRequestDto{
 		DisplayName: "John Doe",
 		Username:    "johndoe",
-		Password:    "Password123!",
+		Password:    "Password123!", //nolint:gosec // NOSONAR - test data, not a real credential
 		Email:       "john.doe@example.com",
 	}
 }
