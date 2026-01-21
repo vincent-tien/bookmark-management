@@ -102,7 +102,7 @@ func TestUser_Register(t *testing.T) {
 			name: "bad request - password too short",
 			setupRequest: func(ctx *gin.Context) {
 				reqBody := validRegisterRequest()
-				reqBody.Password = "short"
+				reqBody.Password = "short" //nolint:gosec // This is test data, not a real credential
 				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), reqBody)
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
