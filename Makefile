@@ -70,13 +70,35 @@ COVERAGE_FOLDER=./coverage
 docker-test:
 	@set -eu; \
 	mkdir -p $(COVERAGE_FOLDER); \
-	docker build \
-		--build-arg COVERAGE_EXCLUDES="$(COVERAGE_EXCLUDE_REGEX)" \
-		--target test-exec \
-		--network=host \
-		-t bookmark-service-test:dev \
+	DOCKER_BUILDKIT=1 docker build \
+		--target base \
+		-t bookmark-service-test-base:dev \
 		. ; \
-	container_id=$$(docker create bookmark-service-test:dev); \
+	container_id=$$(docker run -d \
+		-e COVERAGE_EXCLUDES="$(COVERAGE_EXCLUDE_REGEX)" \
+		bookmark-service-test-base:dev \
+		sh -ec '\
+			mkdir -p /tmp/coverage && \
+			go test ./... \
+				-coverprofile=/tmp/coverage/coverage.tmp \
+				-covermode=atomic \
+				-coverpkg=./... \
+				-p 1 \
+				-timeout=10m && \
+			if [ -z "$$COVERAGE_EXCLUDES" ]; then \
+				cp /tmp/coverage/coverage.tmp /tmp/coverage/coverage.out; \
+			else \
+				grep -v -E "$$COVERAGE_EXCLUDES" /tmp/coverage/coverage.tmp > /tmp/coverage/coverage.out || cp /tmp/coverage/coverage.tmp /tmp/coverage/coverage.out; \
+			fi && \
+			go tool cover -html=/tmp/coverage/coverage.out -o /tmp/coverage/coverage.html \
+		'); \
+	exit_code=$$(docker wait $$container_id); \
+	if [ $$exit_code -ne 0 ]; then \
+		echo "Test execution failed. Container logs:"; \
+		docker logs $$container_id; \
+		docker rm $$container_id; \
+		exit $$exit_code; \
+	fi; \
 	docker cp $$container_id:/tmp/coverage/coverage.out $(COVERAGE_FOLDER)/coverage.out; \
 	docker cp $$container_id:/tmp/coverage/coverage.html $(COVERAGE_FOLDER)/coverage.html; \
 	docker rm $$container_id; \
