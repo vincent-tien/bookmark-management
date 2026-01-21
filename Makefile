@@ -70,11 +70,16 @@ COVERAGE_FOLDER=./coverage
 docker-test:
 	@set -eu; \
 	mkdir -p $(COVERAGE_FOLDER); \
-	docker buildx build \
+	docker build \
 		--build-arg COVERAGE_EXCLUDES="$(COVERAGE_EXCLUDE_REGEX)" \
-		--target test-coverage \
+		--target test-exec \
+		--network=host \
 		-t bookmark-service-test:dev \
-		--output type=local,dest=$(COVERAGE_FOLDER) . ; \
+		. ; \
+	container_id=$$(docker create bookmark-service-test:dev); \
+	docker cp $$container_id:/tmp/coverage/coverage.out $(COVERAGE_FOLDER)/coverage.out; \
+	docker cp $$container_id:/tmp/coverage/coverage.html $(COVERAGE_FOLDER)/coverage.html; \
+	docker rm $$container_id; \
 	if [ ! -f "$(COVERAGE_FOLDER)/coverage.out" ]; then \
 		echo "❌ coverage.out not found in $(COVERAGE_FOLDER)"; \
 		exit 1; \
