@@ -76,10 +76,11 @@ docker-test:
 		. ; \
 	container_id=$$(docker run -d \
 		-e COVERAGE_EXCLUDES="$(COVERAGE_EXCLUDE_REGEX)" \
+		-e CGO_ENABLED=1 \
 		bookmark-service-test-base:dev \
 		sh -ec '\
 			mkdir -p /tmp/coverage && \
-			go test ./... \
+			CGO_ENABLED=1 go test ./... \
 				-coverprofile=/tmp/coverage/coverage.tmp \
 				-covermode=atomic \
 				-coverpkg=./... \

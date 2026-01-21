@@ -7,8 +7,9 @@ RUN mkdir -p /opt/app
 
 WORKDIR /opt/app
 
-# Chỉ cài thứ cần thiết
-RUN apk add --no-cache ca-certificates
+# Install dependencies needed for CGO and SQLite
+# gcc, musl-dev, and sqlite-dev are required for go-sqlite3 to work
+RUN apk add --no-cache ca-certificates gcc musl-dev sqlite-dev
 
 # Cache dependencies
 COPY go.mod go.sum ./
