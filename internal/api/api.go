@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"github.com/redis/go-redis/v9"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -14,6 +16,8 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/repository"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/service"
+	validationPkg "github.com/vincent-tien/bookmark-management/pkg/validation"
+	"gorm.io/gorm"
 )
 
 const (
@@ -35,6 +39,7 @@ type api struct {
 	app         *gin.Engine
 	cfg         *config.Config
 	redisClient *redis.Client
+	db          *gorm.DB
 }
 
 // Start starts the HTTP server on the configured port.
@@ -54,20 +59,32 @@ func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // New creates and initializes a new API engine instance.
 // It sets up the gin router, registers all endpoints, and returns an Engine interface.
 // The configuration is used to set up the application settings.
-func New(cfg *config.Config, redisClient *redis.Client) Engine {
+func New(cfg *config.Config, redisClient *redis.Client, db *gorm.DB) Engine {
 	a := &api{
 		app:         gin.New(),
 		cfg:         cfg,
 		redisClient: redisClient,
+		db:          db,
 	}
+	a.registerValidators()
 	a.registerEP()
 	return a
+}
+
+// registerValidators registers custom validation functions
+func (a *api) registerValidators() {
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		if err := validationPkg.RegisterCustomValidators(v); err != nil {
+			panic(fmt.Sprintf("Failed to register custom validators: %v", err))
+		}
+	}
 }
 
 // registerEP registers all API endpoints and sets up their dependencies.
 func (a *api) registerEP() {
 	a.registerHealthCheckEndpoint()
 	a.registerLinkShortenEndpoint()
+	a.registerUsersEndpoint()
 }
 
 // registerHealthCheckEndpoint registers the health check endpoint.
@@ -88,5 +105,16 @@ func (a *api) registerLinkShortenEndpoint() {
 	{
 		apiVersion.POST(routers.Endpoints.LinkShorten, linkShortenHandler.Create)
 		apiVersion.GET(routers.Endpoints.LinkRedirect, linkShortenHandler.Redirect)
+	}
+}
+
+// registerUsersEndpoint registers the API endpoint for user-related operations at the path specified in Endpoints.Users.
+func (a *api) registerUsersEndpoint() {
+	userRepo := repository.NewUserRepository(a.db)
+	userSvc := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userSvc)
+	apiVersion := a.app.Group(fmt.Sprintf("/%s", Version))
+	{
+		apiVersion.POST(routers.Endpoints.UserRegister, userHandler.Register)
 	}
 }
