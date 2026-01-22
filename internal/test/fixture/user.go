@@ -5,7 +5,10 @@ import (
 	"gorm.io/gorm"
 )
 
+// UserFixture is a fixture for the User model.
+// It provides methods to set up the database, migrate the schema, and generate test data.
 type UserFixture struct {
+	// db is the database connection used by the fixture.
 	db *gorm.DB
 }
 

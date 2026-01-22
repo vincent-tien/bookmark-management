@@ -10,8 +10,10 @@ import (
 	"github.com/vincent-tien/bookmark-management/pkg/response"
 )
 
-// User defines the interface for user handler.
-// It provides a method to handle user registration.
+/*
+User defines the interface for user handlers.
+It provides methods to handle user registration.
+*/
 type User interface {
 	/*
 		Register processes a user registration request and returns a response with created user details or an error status.

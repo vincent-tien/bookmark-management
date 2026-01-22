@@ -25,6 +25,7 @@ var (
 	InvalidRequestError   = Response{Message: "Invalid request", Details: nil}
 )
 
+// InputFieldError Package response contains common response messages and helpers
 func InputFieldError(e error) Response {
 	if ok := errors.As(e, &validator.ValidationErrors{}); !ok {
 		return InternalErrorResponse

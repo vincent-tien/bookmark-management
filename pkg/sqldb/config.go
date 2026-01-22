@@ -22,6 +22,7 @@ func newConfig(envPrefix string) (*config, error) {
 	return cfg, nil
 }
 
+// GetDSN returns the database connection string.
 func (c *config) GetDSN() string {
 	return fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", c.Host, c.Port, c.User, c.DbName, c.Password)
 }
