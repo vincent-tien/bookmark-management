@@ -14,9 +14,6 @@ import (
 // to set up the database with specific data for testing purposes.
 type Fixture interface {
 
-	// Constraint is a function that returns a string that describes the
-	Constraint() string
-
 	// SetupDB returns the database connection that is used by the fixture.
 	SetupDB(db *gorm.DB)
 
