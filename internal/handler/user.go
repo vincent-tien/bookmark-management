@@ -10,7 +10,16 @@ import (
 	"github.com/vincent-tien/bookmark-management/pkg/response"
 )
 
+// User defines the interface for user handler.
+// It provides a method to handle user registration.
 type User interface {
+	/*
+		Register processes a user registration request and returns a response with created user details or an error status.
+		@Summary User Registration
+		@Description	Register a new user with display name, email, username, and password
+		@param c *gin.Context	the Gin context object
+		@return void
+	*/
 	Register(c *gin.Context)
 }
 
@@ -20,16 +29,16 @@ type user struct {
 
 // Register processes a user registration request and returns a response with created user details or an error status.
 //
-//	@Summary		User Registration
+//	@Summary User Registration
 //	@Description	Register a new user with display name, email, username, and password
-//	@Tags			Users
-//	@Accept			json
-//	@Produce		json
-//	@Param			request body dto.RegisterRequestDto true "User registration request payload"
-//	@Success		200 {object} dto.RegisterSuccessResponse "Successfully registered user"
-//	@Failure		400 {object} response.Response "Invalid request body or validation error"
-//	@Failure		500 {object} response.Response "Internal server error"
-//	@Router			/v1/users/register [post]
+//	@Tags Users
+//	@Accept json
+//	@Produce json
+//	@Param request body dto.RegisterRequestDto true "User registration request payload"
+//	@Success 200 {object} dto.RegisterSuccessResponse "Successfully registered user"
+//	@Failure 400 {object} response.Response "Invalid request body or validation error"
+//	@Failure 500 {object} response.Response "Internal server error"
+//	@Router /v1/users/register [post]
 func (u user) Register(c *gin.Context) {
 	var req dto.RegisterRequestDto
 	var err error

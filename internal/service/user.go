@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/model"
 	"github.com/vincent-tien/bookmark-management/internal/repository"
@@ -13,7 +12,16 @@ import (
 
 //go:generate mockery --name=User --filename=user.go
 
+// User defines the interface for user services.
+// It provides methods to handle user registration.
 type User interface {
+
+	/*
+		Register registers a new user.
+
+		The function takes a context and a dto.RegisterRequestDto as parameters.
+		It returns a dto.RegisterResponseDto and an error.
+	*/
 	Register(ctx context.Context, r dto.RegisterRequestDto) (dto.RegisterResponseDto, error)
 }
 
@@ -28,18 +36,11 @@ func NewUserService(repo repository.User) User {
 }
 
 func (u *user) Register(ctx context.Context, r dto.RegisterRequestDto) (dto.RegisterResponseDto, error) {
-	// Generate UUID for user ID
-	userID, err := uuid.NewV7()
-	if err != nil {
-		return dto.RegisterResponseDto{}, err
-	}
-
 	// Hash the password
 	hashedPassword := utils.HashPassword(r.Password)
 
 	// Create user model
 	userModel := &model.User{
-		ID:          userID.String(),
 		Username:    r.Username,
 		Password:    hashedPassword,
 		DisplayName: r.DisplayName,

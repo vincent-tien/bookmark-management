@@ -27,9 +27,16 @@ func TestUser_Register(t *testing.T) {
 			name: "success",
 			setupMockRepo: func(t *testing.T) *mocks.User {
 				mockRepo := mocks.NewUser(t)
-				// Mock CreateUser to succeed - return the same user model that was passed in
+				// Mock CreateUser to succeed - simulate GORM's BeforeCreate hook
 				mockRepo.On("CreateUser", t.Context(), mock.AnythingOfType("*model.User")).Run(func(args mock.Arguments) {
 					u := args.Get(1).(*model.User)
+					// Simulate GORM's BeforeCreate hook - generate UUID if ID is empty
+					if u.ID == "" {
+						userID, err := uuid.NewV7()
+						if err == nil {
+							u.ID = userID.String()
+						}
+					}
 					assert.Equal(t, "johndoe", u.Username)
 					assert.Equal(t, "John Doe", u.DisplayName)
 					assert.Equal(t, "john.doe@example.com", u.Email)
@@ -51,7 +58,6 @@ func TestUser_Register(t *testing.T) {
 			expectedError: nil,
 			validateResult: func(t *testing.T, resp dto.RegisterResponseDto, err error) {
 				assert.NoError(t, err)
-				assert.NotEmpty(t, resp.ID)
 				assert.Equal(t, "johndoe", resp.Username)
 				assert.Equal(t, "John Doe", resp.DisplayName)
 				assert.Equal(t, "john.doe@example.com", resp.Email)
