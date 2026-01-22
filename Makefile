@@ -18,7 +18,7 @@ endif
 
 export IMG_NAME IMG_TAG?=
 
-.PHONY: run swagger dev-run test docker-test docker-lint docker-build docker-release docker-login
+.PHONY: run swagger dev-run test docker-test docker-lint docker-build docker-release docker-login migrate
 
 run:
 	go run cmd/api/main.go
@@ -70,11 +70,39 @@ COVERAGE_FOLDER=./coverage
 docker-test:
 	@set -eu; \
 	mkdir -p $(COVERAGE_FOLDER); \
-	docker buildx build \
-		--build-arg COVERAGE_EXCLUDES="$(COVERAGE_EXCLUDE_REGEX)" \
-		--target test-coverage \
-		-t bookmark-service-test:dev \
-		--output type=local,dest=$(COVERAGE_FOLDER) . ; \
+	DOCKER_BUILDKIT=1 docker build \
+		--target base \
+		-t bookmark-service-test-base:dev \
+		. ; \
+	container_id=$$(docker run -d \
+		-e COVERAGE_EXCLUDES="$(COVERAGE_EXCLUDE_REGEX)" \
+		-e CGO_ENABLED=1 \
+		bookmark-service-test-base:dev \
+		sh -ec '\
+			mkdir -p /tmp/coverage && \
+			CGO_ENABLED=1 go test ./... \
+				-coverprofile=/tmp/coverage/coverage.tmp \
+				-covermode=atomic \
+				-coverpkg=./... \
+				-p 1 \
+				-timeout=10m && \
+			if [ -z "$$COVERAGE_EXCLUDES" ]; then \
+				cp /tmp/coverage/coverage.tmp /tmp/coverage/coverage.out; \
+			else \
+				grep -v -E "$$COVERAGE_EXCLUDES" /tmp/coverage/coverage.tmp > /tmp/coverage/coverage.out || cp /tmp/coverage/coverage.tmp /tmp/coverage/coverage.out; \
+			fi && \
+			go tool cover -html=/tmp/coverage/coverage.out -o /tmp/coverage/coverage.html \
+		'); \
+	exit_code=$$(docker wait $$container_id); \
+	if [ $$exit_code -ne 0 ]; then \
+		echo "Test execution failed. Container logs:"; \
+		docker logs $$container_id; \
+		docker rm $$container_id; \
+		exit $$exit_code; \
+	fi; \
+	docker cp $$container_id:/tmp/coverage/coverage.out $(COVERAGE_FOLDER)/coverage.out; \
+	docker cp $$container_id:/tmp/coverage/coverage.html $(COVERAGE_FOLDER)/coverage.html; \
+	docker rm $$container_id; \
 	if [ ! -f "$(COVERAGE_FOLDER)/coverage.out" ]; then \
 		echo "❌ coverage.out not found in $(COVERAGE_FOLDER)"; \
 		exit 1; \
@@ -107,3 +135,74 @@ DOCKER_PASSWORD ?=
 
 docker-login:
 	echo "$(DOCKER_PASSWORD)" | docker login -u "$(DOCKER_USERNAME)" --password-stdin
+
+# Migration commands using goose
+# Database connection variables (can be overridden via environment)
+DB_HOST     ?= localhost
+DB_USER     ?= ebvn
+DB_PASSWORD ?= abc123
+DB_NAME     ?= ebvn_bm
+DB_PORT     ?= 5432
+
+# Goose configuration
+GOOSE_MIGRATION_DIR ?= migrations
+GOOSE_DRIVER        ?= postgres
+GOOSE_DBSTRING      ?= host=$(DB_HOST) port=$(DB_PORT) user=$(DB_USER) dbname=$(DB_NAME) password=$(DB_PASSWORD) sslmode=disable
+
+# Get the command from arguments (everything after 'migrate')
+MIGRATE_CMD := $(word 2,$(MAKECMDGOALS))
+# For create command, get the migration name and type (default type is sql)
+MIGRATE_NAME := $(word 3,$(MAKECMDGOALS))
+MIGRATE_TYPE := $(or $(word 4,$(MAKECMDGOALS)),sql)
+
+migrate:
+	@if [ -z "$(MIGRATE_CMD)" ]; then \
+		echo "Error: Command is required. Usage: make migrate <command>"; \
+		echo "Available commands: up, down, up-to, down-to, status, version, create"; \
+		exit 1; \
+	fi
+	@case "$(MIGRATE_CMD)" in \
+		up) \
+			goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" up \
+			;; \
+		down) \
+			goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" down \
+			;; \
+		up-to) \
+			if [ -z "$(VERSION)" ]; then \
+				echo "Error: VERSION is required. Usage: make migrate up-to VERSION=<version>"; \
+				exit 1; \
+			fi; \
+			goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" up-to $(VERSION) \
+			;; \
+		down-to) \
+			if [ -z "$(VERSION)" ]; then \
+				echo "Error: VERSION is required. Usage: make migrate down-to VERSION=<version>"; \
+				exit 1; \
+			fi; \
+			goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" down-to $(VERSION) \
+			;; \
+		status) \
+			goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" status \
+			;; \
+		version) \
+			goose -dir $(GOOSE_MIGRATION_DIR) $(GOOSE_DRIVER) "$(GOOSE_DBSTRING)" version \
+			;; \
+		create) \
+			if [ -z "$(MIGRATE_NAME)" ]; then \
+				echo "Error: Migration name is required. Usage: make migrate create <migration_name> [sql|go]"; \
+				exit 1; \
+			fi; \
+			goose -dir $(GOOSE_MIGRATION_DIR) create $(MIGRATE_NAME) $(MIGRATE_TYPE) \
+			;; \
+		*) \
+			echo "Error: Unknown command '$(MIGRATE_CMD)'"; \
+			echo "Available commands: up, down, up-to, down-to, status, version, create"; \
+			exit 1 \
+			;; \
+	esac
+
+# Prevent Make from trying to build migration command arguments as targets
+%:
+	@:
+

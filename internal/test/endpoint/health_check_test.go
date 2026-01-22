@@ -10,6 +10,7 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
+	sqldbPkg "github.com/vincent-tien/bookmark-management/pkg/sqldb"
 )
 
 func TestHealthCheckEndpoint(t *testing.T) {
@@ -42,8 +43,9 @@ func TestHealthCheckEndpoint(t *testing.T) {
 			t.Parallel()
 
 			mockRedis := redisPkg.InitMockRedis(t)
+			mockDB := sqldbPkg.InitMockDb(t)
 
-			app := apipkg.New(cfg, mockRedis)
+			app := apipkg.New(cfg, mockRedis, mockDB)
 			rec := tc.setupTestHttp(app)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)

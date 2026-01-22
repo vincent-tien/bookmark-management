@@ -7,8 +7,9 @@ RUN mkdir -p /opt/app
 
 WORKDIR /opt/app
 
-# Chỉ cài thứ cần thiết
-RUN apk add --no-cache ca-certificates
+# Install dependencies needed for CGO and SQLite
+# gcc, musl-dev, and sqlite-dev are required for go-sqlite3 to work
+RUN apk add --no-cache ca-certificates gcc musl-dev sqlite-dev
 
 # Cache dependencies
 COPY go.mod go.sum ./
@@ -35,11 +36,16 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
  # =====================
  # Stage : Test exec
  # =====================
+ # Note: This stage is kept for compatibility, but tests are now run
+ # in a container using docker run (see Makefile docker-test target)
+ # to avoid network binding restrictions during docker build
 
 FROM base AS test-exec
 
 ARG _outputdir="/tmp/coverage"
 ARG COVERAGE_EXCLUDES=""
+
+ENV GO_TEST_TIMEOUT=10m
 
 RUN sh -ec '\
   mkdir -p "${_outputdir}" && \
@@ -47,7 +53,8 @@ RUN sh -ec '\
     -coverprofile=coverage.tmp \
     -covermode=atomic \
     -coverpkg=./... \
-    -p 1 && \
+    -p 1 \
+    -timeout=10m && \
   if [ -z "${COVERAGE_EXCLUDES}" ]; then \
     cp coverage.tmp "${_outputdir}/coverage.out"; \
   else \

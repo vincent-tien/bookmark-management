@@ -114,6 +114,52 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/users/register": {
+            "post": {
+                "description": "Register a new user with display name, email, username, and password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "User Registration",
+                "parameters": [
+                    {
+                        "description": "User registration request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterRequestDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully registered user",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -155,6 +201,92 @@ const docTemplate = `{
                 },
                 "message": {
                     "description": "Success message\nexample: Shorten URL generated successfully!",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RegisterRequestDto": {
+            "type": "object",
+            "required": [
+                "display_name",
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "display_name": {
+                    "description": "User's display name\nrequired: true\nexample: John Doe",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "User's email address\nrequired: true\nformat: email\nexample: john@example.com",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "User's password (minimum 8 characters, must contain uppercase, lowercase, number, and special character)\nrequired: true\nminLength: 8\nexample: SecurePass123!",
+                    "type": "string",
+                    "minLength": 8
+                },
+                "username": {
+                    "description": "User's unique username\nrequired: true\nexample: johndoe",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RegisterResponseDto": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "Account creation timestamp\nexample: 2024-01-01T00:00:00Z",
+                    "type": "string"
+                },
+                "display_name": {
+                    "description": "User's display name\nexample: John Doe",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "User's email address\nexample: john@example.com",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "User ID\nexample: 123",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "Last update timestamp\nexample: 2024-01-01T00:00:00Z",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "User's username\nexample: johndoe",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RegisterSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "User registration data",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.RegisterResponseDto"
+                        }
+                    ]
+                },
+                "message": {
+                    "description": "Success message\nexample: Register an user successfully!",
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "description": "Additional response details (optional)\nexample: [\"email is invalid email\", \"password is invalid min\"]"
+                },
+                "message": {
+                    "description": "Response message\nexample: Invalid request",
                     "type": "string"
                 }
             }
