@@ -12,6 +12,8 @@ const (
 	tokenLast = 24 * time.Hour
 )
 
+//go:generate mockery --name=JwtGenerator --filename=jwt_generator.go
+
 // JwtGenerator is an interface for generating JWT tokens.
 //
 // This interface encapsulates the logic for generating JWT tokens using a

@@ -4,30 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/model"
 	"github.com/vincent-tien/bookmark-management/internal/repository/mocks"
-	"github.com/vincent-tien/bookmark-management/pkg/jwtUtils"
+	jwtUtilsMocks "github.com/vincent-tien/bookmark-management/pkg/jwtUtils/mocks"
 	"github.com/vincent-tien/bookmark-management/pkg/utils"
 )
-
-// mockJwtGenerator is a no-op mock for JWT generator used in Register tests
-type mockJwtGenerator struct{}
-
-func (m *mockJwtGenerator) GenerateToken(jwtContent jwt.MapClaims) (string, error) {
-	return "", nil
-}
-
-func (m *mockJwtGenerator) GenerateContent(sub string) jwt.MapClaims {
-	return jwt.MapClaims{}
-}
-
-// Ensure mockJwtGenerator implements jwtUtils.JwtGenerator interface
-var _ jwtUtils.JwtGenerator = (*mockJwtGenerator)(nil)
 
 // validateTestResult is a helper function to validate test results and errors.
 // It handles the common pattern of either calling a custom validateResult function
@@ -127,7 +112,7 @@ func TestUser_Register(t *testing.T) {
 
 			mockRepo := tc.setupMockRepo(t)
 			ctx := t.Context()
-			mockJwtGen := &mockJwtGenerator{}
+			mockJwtGen := jwtUtilsMocks.NewJwtGenerator(t)
 			service := NewUserService(mockRepo, mockJwtGen)
 
 			resp, err := service.Register(ctx, tc.request)
