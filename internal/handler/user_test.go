@@ -21,8 +21,14 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/model"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/service/mocks"
+	"github.com/vincent-tien/bookmark-management/internal/test/fixture"
 	validationPkg "github.com/vincent-tien/bookmark-management/pkg/validation"
 )
+
+// setupEmptyMockService returns a new mock service without any expectations
+func setupEmptyMockService(t *testing.T, ctx *gin.Context) *mocks.User {
+	return mocks.NewUser(t)
+}
 
 func init() {
 	// Register custom validators for tests
@@ -71,9 +77,7 @@ func TestUser_Register(t *testing.T) {
 			setupRequest: func(ctx *gin.Context) {
 				setupInvalidJSONRequest(ctx, http.MethodPost, getRegisterEndpoint())
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
@@ -82,9 +86,7 @@ func TestUser_Register(t *testing.T) {
 			setupRequest: func(ctx *gin.Context) {
 				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), map[string]interface{}{})
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
@@ -95,9 +97,7 @@ func TestUser_Register(t *testing.T) {
 				reqBody.Email = "invalid-email"
 				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), reqBody)
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
@@ -111,9 +111,7 @@ func TestUser_Register(t *testing.T) {
 				reqBody.Password = testValue // NOSONAR - test data for validation testing
 				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), reqBody)
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
@@ -178,9 +176,7 @@ func TestUser_Login(t *testing.T) {
 			setupRequest: func(ctx *gin.Context) {
 				setupInvalidJSONRequest(ctx, http.MethodPost, getLoginEndpoint())
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
@@ -189,9 +185,7 @@ func TestUser_Login(t *testing.T) {
 			setupRequest: func(ctx *gin.Context) {
 				setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), map[string]interface{}{})
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
@@ -205,9 +199,7 @@ func TestUser_Login(t *testing.T) {
 				reqBody.RawPassword = testValue // NOSONAR - test data for validation testing
 				setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), reqBody)
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
@@ -296,9 +288,7 @@ func TestUser_GetProfile(t *testing.T) {
 				setupGetRequest(ctx, http.MethodGet, getProfileEndpoint())
 				// Don't set userId in context
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusUnauthorized,
 			expectedResp:   `"error":"Invalid Token"`,
 		},
@@ -309,9 +299,7 @@ func TestUser_GetProfile(t *testing.T) {
 				// Set userId with wrong type (int instead of string)
 				ctx.Set(middleware.UserIDKey, 123)
 			},
-			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
-				return mocks.NewUser(t)
-			},
+			setupMockSvc: setupEmptyMockService,
 			expectedStatus: http.StatusUnauthorized,
 			expectedResp:   `"error":"Invalid Token"`,
 		},
@@ -386,7 +374,7 @@ func validRegisterRequest() dto.RegisterRequestDto {
 	return dto.RegisterRequestDto{
 		DisplayName: "John Doe",
 		Username:    "johndoe",
-		Password:    "Password123!", //nolint:gosec // NOSONAR - test data, not a real credential
+		Password:    fixture.ValidTestPassword(),
 		Email:       "john.doe@example.com",
 	}
 }
@@ -451,6 +439,6 @@ func setupUserIDInContext(ctx *gin.Context, userID string) {
 func validLoginRequest() dto.LoginRequestDto {
 	return dto.LoginRequestDto{
 		Username:    "johndoe",
-		RawPassword: "Password123!", //nolint:gosec // NOSONAR - test data, not a real credential
+		RawPassword: fixture.ValidTestPassword(),
 	}
 }

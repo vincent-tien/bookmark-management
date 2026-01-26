@@ -11,6 +11,25 @@ import (
 	"gorm.io/gorm"
 )
 
+// setupTestDB creates a test database with user fixture
+func setupTestDB(t *testing.T) *gorm.DB {
+	return fixture.NewFixture(t, &fixture.UserFixture{})
+}
+
+// normalizeTimeFields sets CreatedAt and UpdatedAt to zero time for comparison
+func normalizeTimeFields(user *model.User) {
+	if user != nil {
+		user.CreatedAt = time.Time{}
+		user.UpdatedAt = time.Time{}
+	}
+}
+
+// normalizeTimeFieldsForComparison normalizes time fields for both result and expected user
+func normalizeTimeFieldsForComparison(result, expected *model.User) {
+	normalizeTimeFields(result)
+	normalizeTimeFields(expected)
+}
+
 func TestUser_CreateUser(t *testing.T) {
 	t.Parallel()
 
@@ -23,10 +42,8 @@ func TestUser_CreateUser(t *testing.T) {
 		verifyFunc      func(db *gorm.DB, user *model.User)
 	}{
 		{
-			name: "create success",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "create success",
+			setupDb: setupTestDB,
 			inputUser: &model.User{
 				ID:          "deb745af-1a62-4efa-99a0-f06b274bd999",
 				DisplayName: "John Doo",
@@ -46,20 +63,13 @@ func TestUser_CreateUser(t *testing.T) {
 				checkUser := &model.User{}
 				err := db.Where("username = ?", user.Username).First(checkUser).Error
 				assert.Nil(t, err)
-				// Skip comparing CreatedAt and UpdatedAt fields by setting them to zero
-				timeZero := time.Time{}
-				checkUser.CreatedAt = timeZero
-				checkUser.UpdatedAt = timeZero
-				user.CreatedAt = timeZero
-				user.UpdatedAt = timeZero
+				normalizeTimeFieldsForComparison(checkUser, user)
 				assert.Equal(t, checkUser, user)
 			},
 		},
 		{
-			name: "error on duplicate username",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "error on duplicate username",
+			setupDb: setupTestDB,
 			inputUser: &model.User{
 				ID:          "deb745af-1a62-4efa-99a0-f06b274bd995",
 				DisplayName: "John Doe",
@@ -88,13 +98,7 @@ func TestUser_CreateUser(t *testing.T) {
 			}
 
 			assert.NotNil(t, result)
-
-			// Skip comparing CreatedAt and UpdatedAt fields by setting them to zero
-			timeZero := time.Time{}
-			result.CreatedAt = timeZero
-			result.UpdatedAt = timeZero
-			tc.expectedOut.CreatedAt = timeZero
-			tc.expectedOut.UpdatedAt = timeZero
+			normalizeTimeFieldsForComparison(result, tc.expectedOut)
 			assert.Equal(t, tc.expectedOut, result)
 
 			if tc.verifyFunc != nil {
@@ -115,10 +119,8 @@ func TestUser_GetUserById(t *testing.T) {
 		expectErrString string
 	}{
 		{
-			name: "get user by id success",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "get user by id success",
+			setupDb: setupTestDB,
 			inputId: "deb745af-1a62-4efa-99a0-f06b274bd993",
 			expectedOut: &model.User{
 				ID:          "deb745af-1a62-4efa-99a0-f06b274bd993",
@@ -130,10 +132,8 @@ func TestUser_GetUserById(t *testing.T) {
 			expectErrString: "",
 		},
 		{
-			name: "get user by id not found",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "get user by id not found",
+			setupDb: setupTestDB,
 			inputId:         "deb745af-1a62-4efa-99a0-f06b274bd999",
 			expectedOut:     nil,
 			expectErrString: "record not found",
@@ -165,10 +165,8 @@ func TestUser_GetUserByUsername(t *testing.T) {
 		expectErrString string
 	}{
 		{
-			name: "get user by username success",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "get user by username success",
+			setupDb: setupTestDB,
 			inputUsername: "John Doe",
 			expectedOut: &model.User{
 				ID:          "deb745af-1a62-4efa-99a0-f06b274bd993",
@@ -180,10 +178,8 @@ func TestUser_GetUserByUsername(t *testing.T) {
 			expectErrString: "",
 		},
 		{
-			name: "get user by username not found",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "get user by username not found",
+			setupDb: setupTestDB,
 			inputUsername:   "NonExistentUser",
 			expectedOut:     nil,
 			expectErrString: "record not found",
@@ -215,10 +211,8 @@ func TestUser_UpdateProfile(t *testing.T) {
 		verifyFunc      func(db *gorm.DB, userId string, expectedUser *model.User)
 	}{
 		{
-			name: "update display name success",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "update display name success",
+			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
 				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
 				DisplayName: "John Updated",
@@ -226,21 +220,12 @@ func TestUser_UpdateProfile(t *testing.T) {
 			},
 			expectErrString: "",
 			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				checkUser := &model.User{}
-				err := db.Where("id = ?", userId).First(checkUser).Error
-				assert.Nil(t, err)
-				assert.Equal(t, expectedUser.DisplayName, checkUser.DisplayName)
-				assert.Equal(t, expectedUser.Email, checkUser.Email)
-				// Username and Password should remain unchanged
-				assert.Equal(t, "John Doe", checkUser.Username)
-				assert.Equal(t, "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106", checkUser.Password)
+				verifyUpdatedUserFields(t, db, userId, expectedUser, "John Doe", "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106")
 			},
 		},
 		{
-			name: "update email success",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "update email success",
+			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
 				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
 				DisplayName: "",
@@ -259,10 +244,8 @@ func TestUser_UpdateProfile(t *testing.T) {
 			},
 		},
 		{
-			name: "update both display name and email success",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "update both display name and email success",
+			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
 				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
 				DisplayName: "John Updated",
@@ -270,21 +253,12 @@ func TestUser_UpdateProfile(t *testing.T) {
 			},
 			expectErrString: "",
 			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				checkUser := &model.User{}
-				err := db.Where("id = ?", userId).First(checkUser).Error
-				assert.Nil(t, err)
-				assert.Equal(t, expectedUser.DisplayName, checkUser.DisplayName)
-				assert.Equal(t, expectedUser.Email, checkUser.Email)
-				// Username and Password should remain unchanged
-				assert.Equal(t, "John Doe", checkUser.Username)
-				assert.Equal(t, "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106", checkUser.Password)
+				verifyUpdatedUserFields(t, db, userId, expectedUser, "John Doe", "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106")
 			},
 		},
 		{
-			name: "update with no fields to update success",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "update with no fields to update success",
+			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
 				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
 				DisplayName: "",
@@ -292,21 +266,12 @@ func TestUser_UpdateProfile(t *testing.T) {
 			},
 			expectErrString: "",
 			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				checkUser := &model.User{}
-				err := db.Where("id = ?", userId).First(checkUser).Error
-				assert.Nil(t, err)
-				// All fields should remain unchanged
-				assert.Equal(t, "John Doe", checkUser.DisplayName)
-				assert.Equal(t, "john.doe@example.com", checkUser.Email)
-				assert.Equal(t, "John Doe", checkUser.Username)
-				assert.Equal(t, "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106", checkUser.Password)
+				verifyUpdatedUserFields(t, db, userId, &model.User{DisplayName: "John Doe", Email: "john.doe@example.com"}, "John Doe", "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106")
 			},
 		},
 		{
-			name: "error on user not found",
-			setupDb: func(t *testing.T) *gorm.DB {
-				return fixture.NewFixture(t, &fixture.UserFixture{})
-			},
+			name:    "error on user not found",
+			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
 				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd999",
 				DisplayName: "John Updated",
@@ -362,14 +327,19 @@ func verifyGetUserResult(t *testing.T, result *model.User, err error, expectedOu
 	}
 
 	assert.NotNil(t, result)
-
-	// Skip comparing CreatedAt and UpdatedAt fields by setting them to zero
-	timeZero := time.Time{}
-	result.CreatedAt = timeZero
-	result.UpdatedAt = timeZero
-	if expectedOut != nil {
-		expectedOut.CreatedAt = timeZero
-		expectedOut.UpdatedAt = timeZero
-	}
+	normalizeTimeFieldsForComparison(result, expectedOut)
 	assert.Equal(t, expectedOut, result)
+}
+
+// verifyUpdatedUserFields verifies that user fields were updated correctly and unchanged fields remain the same
+func verifyUpdatedUserFields(t *testing.T, db *gorm.DB, userId string, expectedUser *model.User, expectedUsername, expectedPassword string) {
+	t.Helper()
+	checkUser := &model.User{}
+	err := db.Where("id = ?", userId).First(checkUser).Error
+	assert.Nil(t, err)
+	assert.Equal(t, expectedUser.DisplayName, checkUser.DisplayName)
+	assert.Equal(t, expectedUser.Email, checkUser.Email)
+	// Username and Password should remain unchanged
+	assert.Equal(t, expectedUsername, checkUser.Username)
+	assert.Equal(t, expectedPassword, checkUser.Password)
 }
