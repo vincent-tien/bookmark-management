@@ -1,27 +1,16 @@
 package endpoint
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apipkg "github.com/vincent-tien/bookmark-management/internal/api"
-	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
-	"github.com/vincent-tien/bookmark-management/internal/model"
-	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/test/fixture"
-	"github.com/vincent-tien/bookmark-management/pkg/jwtUtils"
-	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
-	sqldbPkg "github.com/vincent-tien/bookmark-management/pkg/sqldb"
-	"github.com/vincent-tien/bookmark-management/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -41,14 +30,9 @@ func TestUserRegisterEndpoint(t *testing.T) {
 					DisplayName: "Test User",
 					Username:    "testuser",
 					Email:       "test@example.com",
-					Password:    "SecurePass123!",
+					Password:    fixture.ValidTestPassword(),
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserRegisterEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserRegisterEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusOK,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -67,11 +51,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 		{
 			name: "bad request - invalid JSON",
 			setupTestHttp: func(api apipkg.Engine) *httptest.ResponseRecorder {
-				req := httptest.NewRequest(http.MethodPost, getUserRegisterEndpoint(), strings.NewReader("invalid json"))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeRequest(api, http.MethodPost, getUserRegisterEndpoint(), "invalid json")
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -89,12 +69,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 			name: "bad request - missing required fields",
 			setupTestHttp: func(api apipkg.Engine) *httptest.ResponseRecorder {
 				reqBody := map[string]interface{}{}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserRegisterEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserRegisterEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -114,14 +89,9 @@ func TestUserRegisterEndpoint(t *testing.T) {
 					DisplayName: "Test User",
 					Username:    "testuser",
 					Email:       "invalid-email",
-					Password:    "SecurePass123!",
+					Password:    fixture.ValidTestPassword(),
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserRegisterEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserRegisterEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -144,12 +114,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 					Email:       "test@example.com",
 					Password:    "weak",
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserRegisterEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserRegisterEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -164,10 +129,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{
-		ServiceName: "bookmark_service",
-		InstanceId:  "",
-	}
+	cfg := defaultTestConfig()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -196,28 +158,12 @@ func TestUserLoginEndpoint(t *testing.T) {
 		{
 			name: "success case",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB) *httptest.ResponseRecorder {
-				//nolint:gosec // NOSONAR - This is test data, not a real credential
-				// This intentionally uses a short password to test validation
-				testPassword := "SecurePass123!"
-				hashedPassword := utils.HashPassword(testPassword)
-				testUser := &model.User{
-					Username:    "testuser",
-					Password:    hashedPassword,
-					DisplayName: "Test User",
-					Email:       "test@example.com",
-				}
-				require.NoError(t, db.Create(testUser).Error)
-
+				testUser := createTestUserWithDefaults(t, db)
 				reqBody := dto.LoginRequestDto{
-					Username:    "testuser",
-					RawPassword: testPassword,
+					Username:    testUser.Username,
+					RawPassword: fixture.ValidTestPassword(),
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserLoginEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserLoginEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusOK,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -233,11 +179,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 		{
 			name: "bad request - invalid JSON",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB) *httptest.ResponseRecorder {
-				req := httptest.NewRequest(http.MethodPost, getUserLoginEndpoint(), strings.NewReader("invalid json"))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeRequest(api, http.MethodPost, getUserLoginEndpoint(), "invalid json")
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -255,12 +197,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 			name: "bad request - missing required fields",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB) *httptest.ResponseRecorder {
 				reqBody := map[string]interface{}{}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserLoginEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserLoginEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -276,28 +213,12 @@ func TestUserLoginEndpoint(t *testing.T) {
 		{
 			name: "bad request - invalid credentials - wrong password",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB) *httptest.ResponseRecorder {
-				//nolint:gosec // NOSONAR - This is test data, not a real credential
-				// This intentionally uses a short password to test validation
-				testPassword := "SecurePass123!"
-				hashedPassword := utils.HashPassword(testPassword)
-				testUser := &model.User{
-					Username:    "testuser",
-					Password:    hashedPassword,
-					DisplayName: "Test User",
-					Email:       "test@example.com",
-				}
-				require.NoError(t, db.Create(testUser).Error)
-
+				testUser := createTestUserWithDefaults(t, db)
 				reqBody := dto.LoginRequestDto{
-					Username:    "testuser",
-					RawPassword: "WrongPassword123!",
+					Username:    testUser.Username,
+					RawPassword: fixture.WrongTestPassword(),
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserLoginEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserLoginEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -313,14 +234,9 @@ func TestUserLoginEndpoint(t *testing.T) {
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB) *httptest.ResponseRecorder {
 				reqBody := dto.LoginRequestDto{
 					Username:    "nonexistent",
-					RawPassword: "SecurePass123!",
+					RawPassword: fixture.ValidTestPassword(),
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserLoginEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserLoginEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusInternalServerError,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -335,12 +251,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 					Username:    "testuser",
 					RawPassword: "short",
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getUserLoginEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getUserLoginEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -355,10 +266,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{
-		ServiceName: "bookmark_service",
-		InstanceId:  "",
-	}
+	cfg := defaultTestConfig()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -387,19 +295,8 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		{
 			name: "success case",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
-				// Create a test user
-				testUser := &model.User{
-					Username:    "testuser",
-					Password:    utils.HashPassword("SecurePass123!"),
-					DisplayName: "Test User",
-					Email:       "test@example.com",
-				}
-				require.NoError(t, db.Create(testUser).Error)
-
-				// Set userID in mock validator from fixture
+				testUser := createTestUserWithDefaults(t, db)
 				mockJwtValidator.SetUserID(testUser.ID)
-
-				// Use any token string since mock validator will return the userID from fixture
 				req := httptest.NewRequest(http.MethodGet, getUserProfileEndpoint(), nil)
 				req.Header.Set("Authorization", "Bearer mock.token.from.fixture")
 				rec := httptest.NewRecorder()
@@ -519,10 +416,7 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{
-		ServiceName: "bookmark_service",
-		InstanceId:  "",
-	}
+	cfg := defaultTestConfig()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -537,72 +431,4 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 			}
 		})
 	}
-}
-
-// testSetup contains common test infrastructure
-type testSetup struct {
-	mockRedis        *redis.Client
-	mockDB           *gorm.DB
-	jwtGenerator     jwtUtils.JwtGenerator
-	jwtValidator     jwtUtils.JwtValidator
-	mockJwtValidator *fixture.MockJwtValidator
-	app              apipkg.Engine
-}
-
-// setupTestInfrastructure sets up common test infrastructure (Redis, DB, JWT, etc.)
-func setupTestInfrastructure(t *testing.T, cfg *config.Config, useMockValidator bool) *testSetup {
-	t.Helper()
-
-	mockRedis := redisPkg.InitMockRedis(t)
-	mockDB := sqldbPkg.InitMockDb(t)
-
-	// Migrate user table
-	require.NoError(t, mockDB.AutoMigrate(&model.User{}))
-
-	projectRoot := getProjectRoot(t)
-	privateKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "private.test.pem")
-
-	jwtGenerator, err := jwtUtils.NewJwtGenerator(privateKeyPath)
-	if err != nil {
-		t.Fatalf("Failed to create JWT generator: %v", err)
-	}
-
-	var jwtValidator jwtUtils.JwtValidator
-	var mockJwtValidator *fixture.MockJwtValidator
-
-	if useMockValidator {
-		mockJwtValidator = fixture.NewMockJwtValidator("")
-		jwtValidator = mockJwtValidator
-	} else {
-		publicKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "public.test.pem")
-		realValidator, err := jwtUtils.NewJwtValidator(publicKeyPath)
-		if err != nil {
-			t.Fatalf("Failed to create JWT validator: %v", err)
-		}
-		jwtValidator = realValidator
-	}
-
-	app := apipkg.New(cfg, mockRedis, mockDB, jwtGenerator, jwtValidator)
-
-	return &testSetup{
-		mockRedis:        mockRedis,
-		mockDB:           mockDB,
-		jwtGenerator:     jwtGenerator,
-		jwtValidator:     jwtValidator,
-		mockJwtValidator: mockJwtValidator,
-		app:              app,
-	}
-}
-
-// Helper functions for endpoint paths
-func getUserRegisterEndpoint() string {
-	return "/v1" + routers.Endpoints.UserRegister
-}
-
-func getUserLoginEndpoint() string {
-	return "/v1" + routers.Endpoints.AuthLogin
-}
-
-func getUserProfileEndpoint() string {
-	return "/v1" + routers.Endpoints.GetProfile
 }
