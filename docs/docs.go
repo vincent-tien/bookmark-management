@@ -115,6 +115,147 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/self/info": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get user profile information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "User profile",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserProfileResponseDto"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update user profile information (display name and/or email)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update user profile",
+                "parameters": [
+                    {
+                        "description": "User profile update request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateUserProfileRequestDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Profile updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/users/login": {
+            "post": {
+                "description": "Login a user with username and password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "User Login",
+                "parameters": [
+                    {
+                        "description": "User login request payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginRequestDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully logged in user",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/users/register": {
             "post": {
                 "description": "Register a new user with display name, email, username, and password",
@@ -205,6 +346,33 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.LoginRequestDto": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "description": "Password\nrequired: true\nexample: SecurePass123!",
+                    "type": "string",
+                    "minLength": 8
+                },
+                "username": {
+                    "description": "Username\nrequired: true\nexample: johndoe",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LoginSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "JWT token\nexample: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Success message\nexample: Logged in successfully!",
+                    "type": "string"
+                }
+            }
+        },
         "dto.RegisterRequestDto": {
             "type": "object",
             "required": [
@@ -275,6 +443,51 @@ const docTemplate = `{
                 },
                 "message": {
                     "description": "Success message\nexample: Register an user successfully!",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateUserProfileRequestDto": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "display_name": {
+                    "description": "User's display name\nexample: John Doe",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "User's email address\nexample: john@example.com",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UserProfileResponseDto": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "Account creation timestamp\nexample: 2024-01-01T00:00:00Z",
+                    "type": "string"
+                },
+                "display_name": {
+                    "description": "User's display name\nexample: John Doe",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "User's email address\nexample: john@example.com",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "User ID\nexample: 123",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "Last update timestamp\nexample: 2024-01-01T00:00:00Z",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "User's username\nexample: johndoe",
                     "type": "string"
                 }
             }

@@ -1,7 +1,6 @@
 package endpoint
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -13,11 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apipkg "github.com/vincent-tien/bookmark-management/internal/api"
-	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
-	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
-	sqldbPkg "github.com/vincent-tien/bookmark-management/pkg/sqldb"
 )
 
 func TestLinkShortenEndpoint(t *testing.T) {
@@ -35,23 +31,14 @@ func TestLinkShortenEndpoint(t *testing.T) {
 					ExpInSeconds: 3600,
 					Url:          "https://google.com",
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getApiEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getApiEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusCreated,
 		},
 		{
 			name: "bad request - invalid JSON",
 			setupTestHttp: func(api apipkg.Engine) *httptest.ResponseRecorder {
-				req := httptest.NewRequest(http.MethodPost, getApiEndpoint(), strings.NewReader("invalid json"))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeRequest(api, http.MethodPost, getApiEndpoint(), "invalid json")
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -59,12 +46,7 @@ func TestLinkShortenEndpoint(t *testing.T) {
 			name: "bad request - missing required fields",
 			setupTestHttp: func(api apipkg.Engine) *httptest.ResponseRecorder {
 				reqBody := map[string]interface{}{}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getApiEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getApiEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -75,12 +57,7 @@ func TestLinkShortenEndpoint(t *testing.T) {
 					ExpInSeconds: 3600,
 					Url:          "not-a-valid-url",
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getApiEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getApiEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusBadRequest,
 		},
@@ -90,31 +67,20 @@ func TestLinkShortenEndpoint(t *testing.T) {
 				reqBody := dto.LinkShortenRequestDto{
 					Url: "https://example.com",
 				}
-				jsonData, _ := json.Marshal(reqBody)
-				req := httptest.NewRequest(http.MethodPost, getApiEndpoint(), bytes.NewBuffer(jsonData))
-				req.Header.Set("Content-Type", "application/json")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeJSONRequest(api, http.MethodPost, getApiEndpoint(), reqBody)
 			},
 			expectedStatus: http.StatusCreated,
 		},
 	}
 
-	cfg := &config.Config{
-		ServiceName: "bookmark_service",
-		InstanceId:  "",
-	}
+	cfg := defaultTestConfig()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockRedis := redisPkg.InitMockRedis(t)
-			mockDB := sqldbPkg.InitMockDb(t)
-
-			app := apipkg.New(cfg, mockRedis, mockDB)
-			rec := tc.setupTestHttp(app)
+			setup := setupTestInfrastructureSimple(t, cfg)
+			rec := tc.setupTestHttp(setup.app)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
 			switch tc.expectedStatus {
@@ -198,20 +164,14 @@ func TestRedirectLinkEndpoint(t *testing.T) {
 		},
 	}
 
-	cfg := &config.Config{
-		ServiceName: "bookmark_service",
-		InstanceId:  "",
-	}
+	cfg := defaultTestConfig()
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockRedis := redisPkg.InitMockRedis(t)
-			mockDB := sqldbPkg.InitMockDb(t)
-
-			app := apipkg.New(cfg, mockRedis, mockDB)
-			rec := tc.setupTestHttp(app, mockRedis)
+			setup := setupTestInfrastructureSimple(t, cfg)
+			rec := tc.setupTestHttp(setup.app, setup.mockRedis)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
 			switch tc.expectedStatus {

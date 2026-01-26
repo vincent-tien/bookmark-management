@@ -5,6 +5,7 @@ import (
 	_ "github.com/vincent-tien/bookmark-management/docs"
 	"github.com/vincent-tien/bookmark-management/internal/api"
 	"github.com/vincent-tien/bookmark-management/internal/config"
+	"github.com/vincent-tien/bookmark-management/pkg/jwtUtils"
 	"github.com/vincent-tien/bookmark-management/pkg/logger"
 	"github.com/vincent-tien/bookmark-management/pkg/migrations"
 	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
@@ -14,6 +15,9 @@ import (
 // @title	Bookmark Management API
 // @version	1.0.2
 // @description	Bookmark Management API is a RESTful service
+// @securityDefinition.apiKey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	logger.SetLogLevel()
 
@@ -47,7 +51,17 @@ func main() {
 		panic(err)
 	}
 
-	app := api.New(cfg, redisClient, db)
+	jwtGenerator, err := jwtUtils.NewJwtGenerator("./private.pem")
+	if err != nil {
+		panic(err)
+	}
+
+	jwtValidator, err := jwtUtils.NewJwtValidator("./public.pem")
+	if err != nil {
+		return
+	}
+
+	app := api.New(cfg, redisClient, db, jwtGenerator, jwtValidator)
 	err = app.Start()
 	if err != nil {
 		panic(err)

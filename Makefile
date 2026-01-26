@@ -18,7 +18,7 @@ endif
 
 export IMG_NAME IMG_TAG?=
 
-.PHONY: run swagger dev-run test docker-test docker-lint docker-build docker-release docker-login migrate
+.PHONY: run swagger dev-run test docker-test docker-lint docker-build docker-release docker-login migrate generate-rsa-key
 
 run:
 	go run cmd/api/main.go
@@ -206,3 +206,6 @@ migrate:
 %:
 	@:
 
+generate-rsa-key:
+	openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
+	openssl rsa -pubout -in private.pem -out public.pem
