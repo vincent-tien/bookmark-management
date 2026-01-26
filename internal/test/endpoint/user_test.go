@@ -55,14 +55,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Message string   `json:"message"`
-					Details []string `json:"details"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				// Invalid JSON returns InternalErrorResponse, not validation error
-				assert.Equal(t, "Something went wrong", resp.Message)
-				// Details can be nil or empty for invalid JSON
+				validateInvalidJSONResponse(t, rec)
 			},
 		},
 		{
@@ -73,13 +66,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Message string   `json:"message"`
-					Details []string `json:"details"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Equal(t, "Invalid request", resp.Message)
-				assert.NotEmpty(t, resp.Details)
+				validateBadRequestResponse(t, rec, "Invalid request")
 			},
 		},
 		{
@@ -95,13 +82,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Message string   `json:"message"`
-					Details []string `json:"details"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Equal(t, "Invalid request", resp.Message)
-				assert.NotEmpty(t, resp.Details)
+				validateBadRequestResponse(t, rec, "Invalid request")
 				assert.Contains(t, rec.Body.String(), "Email is invalid email")
 			},
 		},
@@ -118,13 +99,7 @@ func TestUserRegisterEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Message string   `json:"message"`
-					Details []string `json:"details"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Equal(t, "Invalid request", resp.Message)
-				assert.NotEmpty(t, resp.Details)
+				validateBadRequestResponse(t, rec, "Invalid request")
 			},
 		},
 	}
@@ -183,14 +158,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Message string   `json:"message"`
-					Details []string `json:"details"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				// Invalid JSON returns InternalErrorResponse, not validation error
-				assert.Equal(t, "Something went wrong", resp.Message)
-				// Details can be nil or empty for invalid JSON
+				validateInvalidJSONResponse(t, rec)
 			},
 		},
 		{
@@ -201,13 +169,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Message string   `json:"message"`
-					Details []string `json:"details"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Equal(t, "Invalid request", resp.Message)
-				assert.NotEmpty(t, resp.Details)
+				validateBadRequestResponse(t, rec, "Invalid request")
 			},
 		},
 		{
@@ -222,11 +184,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Error string `json:"error"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Contains(t, resp.Error, "invalid")
+				validateUnauthorizedResponse(t, rec, "invalid")
 			},
 		},
 		{
@@ -255,13 +213,7 @@ func TestUserLoginEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusBadRequest,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Message string   `json:"message"`
-					Details []string `json:"details"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Equal(t, "Invalid request", resp.Message)
-				assert.NotEmpty(t, resp.Details)
+				validateBadRequestResponse(t, rec, "Invalid request")
 			},
 		},
 	}
@@ -297,11 +249,7 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
 				testUser := createTestUserWithDefaults(t, db)
 				mockJwtValidator.SetUserID(testUser.ID)
-				req := httptest.NewRequest(http.MethodGet, getUserProfileEndpoint(), nil)
-				req.Header.Set("Authorization", "Bearer mock.token.from.fixture")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "mock.token.from.fixture")
 			},
 			expectedStatus: http.StatusOK,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
@@ -321,18 +269,11 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		{
 			name: "unauthorized - missing authorization header",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
-				req := httptest.NewRequest(http.MethodGet, getUserProfileEndpoint(), nil)
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "")
 			},
 			expectedStatus: http.StatusUnauthorized,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Error string `json:"error"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Contains(t, resp.Error, "Authorization is required")
+				validateUnauthorizedResponse(t, rec, "Authorization is required")
 			},
 		},
 		{
@@ -346,72 +287,40 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 			},
 			expectedStatus: http.StatusUnauthorized,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Error string `json:"error"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Contains(t, resp.Error, "Bearer token")
+				validateUnauthorizedResponse(t, rec, "Bearer token")
 			},
 		},
 		{
 			name: "unauthorized - invalid token",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
-				// Set mock validator to return error
 				mockJwtValidator.SetShouldReturnError(true)
-
-				req := httptest.NewRequest(http.MethodGet, getUserProfileEndpoint(), nil)
-				req.Header.Set("Authorization", "Bearer invalid.token.here")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "invalid.token.here")
 			},
 			expectedStatus: http.StatusUnauthorized,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Error string `json:"error"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Contains(t, resp.Error, "invalid token")
+				validateUnauthorizedResponse(t, rec, "invalid token")
 			},
 		},
 		{
 			name: "unauthorized - empty token",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
-				req := httptest.NewRequest(http.MethodGet, getUserProfileEndpoint(), nil)
-				req.Header.Set("Authorization", "Bearer ")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), " ")
 			},
 			expectedStatus: http.StatusUnauthorized,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Error string `json:"error"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Contains(t, resp.Error, "required")
+				validateUnauthorizedResponse(t, rec, "required")
 			},
 		},
 		{
 			name: "unauthorized - user not found",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
-				// Set userID in mock validator for non-existent user
 				nonExistentUserID := "00000000-0000-0000-0000-000000000000"
 				mockJwtValidator.SetUserID(nonExistentUserID)
-
-				req := httptest.NewRequest(http.MethodGet, getUserProfileEndpoint(), nil)
-				req.Header.Set("Authorization", "Bearer mock.token.from.fixture")
-				rec := httptest.NewRecorder()
-				api.ServeHTTP(rec, req)
-				return rec
+				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "mock.token.from.fixture")
 			},
 			expectedStatus: http.StatusUnauthorized,
 			validateResp: func(t *testing.T, rec *httptest.ResponseRecorder) {
-				var resp struct {
-					Error string `json:"error"`
-				}
-				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-				assert.Contains(t, resp.Error, "Invalid Token")
+				validateUnauthorizedResponse(t, rec, "Invalid Token")
 			},
 		},
 	}

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apipkg "github.com/vincent-tien/bookmark-management/internal/api"
 	"github.com/vincent-tien/bookmark-management/internal/config"
@@ -204,4 +205,57 @@ func getUserLoginEndpoint() string {
 
 func getUserProfileEndpoint() string {
 	return "/v1" + routers.Endpoints.GetProfile
+}
+
+// Response validation helpers
+
+// validateBadRequestResponse validates a bad request response with Message and Details
+func validateBadRequestResponse(t *testing.T, rec *httptest.ResponseRecorder, expectedMessage string) {
+	t.Helper()
+	var resp struct {
+		Message string   `json:"message"`
+		Details []string `json:"details"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Equal(t, expectedMessage, resp.Message)
+	assert.NotEmpty(t, resp.Details)
+}
+
+// validateInvalidJSONResponse validates an invalid JSON response
+func validateInvalidJSONResponse(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	var resp struct {
+		Message string   `json:"message"`
+		Details []string `json:"details"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	// Invalid JSON returns InternalErrorResponse, not validation error
+	assert.Equal(t, "Something went wrong", resp.Message)
+	// Details can be nil or empty for invalid JSON
+}
+
+// validateUnauthorizedResponse validates an unauthorized response with Error field
+func validateUnauthorizedResponse(t *testing.T, rec *httptest.ResponseRecorder, expectedErrorSubstring string) {
+	t.Helper()
+	var resp struct {
+		Error string `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	assert.Contains(t, resp.Error, expectedErrorSubstring)
+}
+
+// executeGetRequestWithAuth executes a GET request with Authorization header
+// If token doesn't start with "Bearer ", it will be prefixed automatically
+func executeGetRequestWithAuth(api apipkg.Engine, endpoint, token string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, endpoint, nil)
+	if token != "" {
+		authHeader := token
+		if !strings.HasPrefix(token, "Bearer ") {
+			authHeader = "Bearer " + token
+		}
+		req.Header.Set("Authorization", authHeader)
+	}
+	rec := httptest.NewRecorder()
+	api.ServeHTTP(rec, req)
+	return rec
 }
