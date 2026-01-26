@@ -29,6 +29,16 @@ type jwtGenerator struct {
 	privateKey *rsa.PrivateKey
 }
 
+// NewJwtGenerator returns a new instance of JwtGenerator, which is an interface for
+// generating JWT tokens. It takes a privateKeyPath parameter, which is the path to
+// a PEM-encoded private key file. The private key is used to sign the JWT
+// tokens.
+//
+// It returns an error if the private key file cannot be read or parsed, or if the
+// private key is invalid.
+//
+// The returned JwtGenerator instance can be used to generate JWT tokens using the
+// GenerateToken method.
 func NewJwtGenerator(privateKeyPath string) (JwtGenerator, error) {
 	privateKeyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	apipkg "github.com/vincent-tien/bookmark-management/internal/api"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/test/fixture"
+	jwtMocks "github.com/vincent-tien/bookmark-management/pkg/jwtUtils/mocks"
 	"gorm.io/gorm"
 )
 
@@ -240,15 +241,15 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		setupTestHttp  func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder
+		setupTestHttp  func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *jwtMocks.JwtValidator) *httptest.ResponseRecorder
 		expectedStatus int
 		validateResp   func(t *testing.T, rec *httptest.ResponseRecorder)
 	}{
 		{
 			name: "success case",
-			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
+			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *jwtMocks.JwtValidator) *httptest.ResponseRecorder {
 				testUser := createTestUserWithDefaults(t, db)
-				mockJwtValidator.SetUserID(testUser.ID)
+				fixture.SetupMockJwtValidatorWithUserID(mockJwtValidator, testUser.ID)
 				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "mock.token.from.fixture")
 			},
 			expectedStatus: http.StatusOK,
@@ -268,7 +269,7 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		},
 		{
 			name: "unauthorized - missing authorization header",
-			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
+			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *jwtMocks.JwtValidator) *httptest.ResponseRecorder {
 				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "")
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -278,7 +279,7 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		},
 		{
 			name: "unauthorized - invalid token format",
-			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
+			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *jwtMocks.JwtValidator) *httptest.ResponseRecorder {
 				req := httptest.NewRequest(http.MethodGet, getUserProfileEndpoint(), nil)
 				req.Header.Set("Authorization", "InvalidFormat token")
 				rec := httptest.NewRecorder()
@@ -292,8 +293,8 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		},
 		{
 			name: "unauthorized - invalid token",
-			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
-				mockJwtValidator.SetShouldReturnError(true)
+			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *jwtMocks.JwtValidator) *httptest.ResponseRecorder {
+				fixture.SetupMockJwtValidatorWithError(mockJwtValidator)
 				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "invalid.token.here")
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -303,7 +304,7 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		},
 		{
 			name: "unauthorized - empty token",
-			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
+			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *jwtMocks.JwtValidator) *httptest.ResponseRecorder {
 				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), " ")
 			},
 			expectedStatus: http.StatusUnauthorized,
@@ -313,9 +314,9 @@ func TestUserGetProfileEndpoint(t *testing.T) {
 		},
 		{
 			name: "unauthorized - user not found",
-			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *fixture.MockJwtValidator) *httptest.ResponseRecorder {
+			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB, mockJwtValidator *jwtMocks.JwtValidator) *httptest.ResponseRecorder {
 				nonExistentUserID := "00000000-0000-0000-0000-000000000000"
-				mockJwtValidator.SetUserID(nonExistentUserID)
+				fixture.SetupMockJwtValidatorWithUserID(mockJwtValidator, nonExistentUserID)
 				return executeGetRequestWithAuth(api, getUserProfileEndpoint(), "mock.token.from.fixture")
 			},
 			expectedStatus: http.StatusUnauthorized,

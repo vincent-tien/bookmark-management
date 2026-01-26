@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/model"
 	"gorm.io/gorm"
 )
@@ -21,7 +20,7 @@ type User interface {
 
 	GetUserById(ctx context.Context, userId string) (*model.User, error)
 
-	UpdateProfile(ctx context.Context, dto dto.UpdateUserProfileRequestDto) error
+	UpdateProfile(ctx context.Context, userId string, updates map[string]interface{}) error
 }
 
 type user struct {
@@ -57,31 +56,6 @@ func (u *user) getUserByIField(ctx context.Context, fieldName, fieldValue string
 	return chosenUser, nil
 }
 
-func (u *user) UpdateProfile(ctx context.Context, dto dto.UpdateUserProfileRequestDto) error {
-	// First, get the existing user
-	existingUser, err := u.GetUserById(ctx, dto.UserId)
-	if err != nil {
-		return err
-	}
-
-	// Update only the fields that are provided (non-empty)
-	updates := make(map[string]interface{})
-	if dto.DisplayName != "" {
-		updates["display_name"] = dto.DisplayName
-	}
-	if dto.Email != "" {
-		updates["email"] = dto.Email
-	}
-
-	// If no fields to update, return the existing user
-	if len(updates) == 0 {
-		return nil
-	}
-
-	err = u.db.WithContext(ctx).Model(existingUser).Updates(updates).Error
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (u *user) UpdateProfile(ctx context.Context, userId string, updates map[string]interface{}) error {
+	return u.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", userId).Updates(updates).Error
 }

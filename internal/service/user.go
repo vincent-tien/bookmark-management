@@ -122,5 +122,25 @@ func (u *user) GetProfile(ctx context.Context, userId string) (*model.User, erro
 }
 
 func (u *user) UpdateProfile(ctx context.Context, requestDto dto.UpdateUserProfileRequestDto) error {
-	return u.userRepository.UpdateProfile(ctx, requestDto)
+	// First, check if the user exists
+	_, err := u.userRepository.GetUserById(ctx, requestDto.UserId)
+	if err != nil {
+		return err
+	}
+
+	// Build updates map with only non-empty fields
+	updates := make(map[string]interface{})
+	if requestDto.DisplayName != "" {
+		updates["display_name"] = requestDto.DisplayName
+	}
+	if requestDto.Email != "" {
+		updates["email"] = requestDto.Email
+	}
+
+	// If no fields to update, return early
+	if len(updates) == 0 {
+		return nil
+	}
+
+	return u.userRepository.UpdateProfile(ctx, requestDto.UserId, updates)
 }

@@ -6,8 +6,6 @@ import (
 	context "context"
 
 	mock "github.com/stretchr/testify/mock"
-	dto "github.com/vincent-tien/bookmark-management/internal/dto"
-
 	model "github.com/vincent-tien/bookmark-management/internal/model"
 )
 
@@ -106,17 +104,17 @@ func (_m *User) GetUserByUsername(ctx context.Context, username string) (*model.
 	return r0, r1
 }
 
-// UpdateProfile provides a mock function with given fields: ctx, _a1
-func (_m *User) UpdateProfile(ctx context.Context, _a1 dto.UpdateUserProfileRequestDto) error {
-	ret := _m.Called(ctx, _a1)
+// UpdateProfile provides a mock function with given fields: ctx, userId, updates
+func (_m *User) UpdateProfile(ctx context.Context, userId string, updates map[string]interface{}) error {
+	ret := _m.Called(ctx, userId, updates)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateProfile")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, dto.UpdateUserProfileRequestDto) error); ok {
-		r0 = rf(ctx, _a1)
+	if rf, ok := ret.Get(0).(func(context.Context, string, map[string]interface{}) error); ok {
+		r0 = rf(ctx, userId, updates)
 	} else {
 		r0 = ret.Error(0)
 	}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,31 +18,18 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/test/fixture"
 	"github.com/vincent-tien/bookmark-management/pkg/jwtUtils"
+	jwtMocks "github.com/vincent-tien/bookmark-management/pkg/jwtUtils/mocks"
 	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
 	sqldbPkg "github.com/vincent-tien/bookmark-management/pkg/sqldb"
 	"github.com/vincent-tien/bookmark-management/pkg/utils"
 	"gorm.io/gorm"
 )
 
-// getProjectRoot finds the project root by looking for go.mod file
-func getProjectRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get current directory: %v", err)
-	}
-
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("Could not find project root (go.mod not found)")
-		}
-		dir = parent
-	}
-}
+// Relative paths to test PEM files from this package (internal/test/endpoint)
+var (
+	privateKeyPath = filepath.FromSlash("../../../pkg/jwtUtils/private.test.pem")
+	publicKeyPath  = filepath.FromSlash("../../../pkg/jwtUtils/public.test.pem")
+)
 
 // testSetup contains common test infrastructure
 type testSetup struct {
@@ -51,7 +37,7 @@ type testSetup struct {
 	mockDB           *gorm.DB
 	jwtGenerator     jwtUtils.JwtGenerator
 	jwtValidator     jwtUtils.JwtValidator
-	mockJwtValidator *fixture.MockJwtValidator
+	mockJwtValidator *jwtMocks.JwtValidator
 	app              apipkg.Engine
 }
 
@@ -65,22 +51,18 @@ func setupTestInfrastructure(t *testing.T, cfg *config.Config, useMockValidator 
 	// Migrate user table
 	require.NoError(t, mockDB.AutoMigrate(&model.User{}))
 
-	projectRoot := getProjectRoot(t)
-	privateKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "private.test.pem")
-
 	jwtGenerator, err := jwtUtils.NewJwtGenerator(privateKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to create JWT generator: %v", err)
 	}
 
 	var jwtValidator jwtUtils.JwtValidator
-	var mockJwtValidator *fixture.MockJwtValidator
+	var mockJwtValidator *jwtMocks.JwtValidator
 
 	if useMockValidator {
-		mockJwtValidator = fixture.NewMockJwtValidator("")
+		mockJwtValidator = fixture.NewMockJwtValidator(t)
 		jwtValidator = mockJwtValidator
 	} else {
-		publicKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "public.test.pem")
 		realValidator, err := jwtUtils.NewJwtValidator(publicKeyPath)
 		if err != nil {
 			t.Fatalf("Failed to create JWT validator: %v", err)
@@ -106,10 +88,6 @@ func setupTestInfrastructureSimple(t *testing.T, cfg *config.Config) *testSetup 
 
 	mockRedis := redisPkg.InitMockRedis(t)
 	mockDB := sqldbPkg.InitMockDb(t)
-
-	projectRoot := getProjectRoot(t)
-	privateKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "private.test.pem")
-	publicKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "public.test.pem")
 
 	jwtGenerator, err := jwtUtils.NewJwtGenerator(privateKeyPath)
 	if err != nil {

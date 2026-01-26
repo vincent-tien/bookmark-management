@@ -8,6 +8,8 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+//go:generate mockery --name=JwtValidator --filename=jwt_validator.go
+
 // JwtValidator is an interface for validating JWT tokens.
 //
 // This interface encapsulates the logic for validating JWT tokens using a

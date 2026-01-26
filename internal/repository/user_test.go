@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/model"
 	"github.com/vincent-tien/bookmark-management/internal/test/fixture"
 	"gorm.io/gorm"
@@ -207,42 +206,43 @@ func TestUser_UpdateProfile(t *testing.T) {
 	testCases := []struct {
 		name            string
 		setupDb         func(t *testing.T) *gorm.DB
-		inputDto        dto.UpdateUserProfileRequestDto
+		userId          string
+		updates         map[string]interface{}
+		expectedUser    *model.User
 		expectErrString string
 	}{
 		{
-			name:            "update display name success",
-			setupDb:         setupTestDB,
-			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "John Updated", Email: ""},
-			expectErrString: "",
-		},
-		{
-			name:            "update email success",
-			setupDb:         setupTestDB,
-			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "", Email: "john.updated@example.com"},
-			expectErrString: "",
-		},
-		{
-			name:            "update both display name and email success",
-			setupDb:         setupTestDB,
-			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "John Updated", Email: "john.updated@example.com"},
-			expectErrString: "",
-		},
-		{
-			name:            "update with no fields to update success",
-			setupDb:         setupTestDB,
-			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "", Email: ""},
-			expectErrString: "",
-		},
-		{
-			name:    "error on user not found",
+			name:    "update display name success",
 			setupDb: setupTestDB,
-			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd999",
+			userId:  testUserID,
+			updates: map[string]interface{}{"display_name": "John Updated"},
+			expectedUser: &model.User{
+				DisplayName: "John Updated",
+				Email:       testEmail,
+			},
+			expectErrString: "",
+		},
+		{
+			name:    "update email success",
+			setupDb: setupTestDB,
+			userId:  testUserID,
+			updates: map[string]interface{}{"email": "john.updated@example.com"},
+			expectedUser: &model.User{
+				DisplayName: testDisplayName,
+				Email:       "john.updated@example.com",
+			},
+			expectErrString: "",
+		},
+		{
+			name:    "update both display name and email success",
+			setupDb: setupTestDB,
+			userId:  testUserID,
+			updates: map[string]interface{}{"display_name": "John Updated", "email": "john.updated@example.com"},
+			expectedUser: &model.User{
 				DisplayName: "John Updated",
 				Email:       "john.updated@example.com",
 			},
-			expectErrString: "record not found",
+			expectErrString: "",
 		},
 	}
 
@@ -253,7 +253,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 			ctx := t.Context()
 			db := tc.setupDb(t)
 			testRepo := NewUserRepository(db)
-			err := testRepo.UpdateProfile(ctx, tc.inputDto)
+			err := testRepo.UpdateProfile(ctx, tc.userId, tc.updates)
 
 			if tc.expectErrString != "" {
 				assert.ErrorContains(t, err, tc.expectErrString)
@@ -261,9 +261,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 			}
 
 			assert.Nil(t, err)
-
-			expectedUser := buildExpectedUserForUpdate(tc.inputDto)
-			verifyUpdatedUserFields(t, db, tc.inputDto.UserId, expectedUser, testUsername, testPasswordHash)
+			verifyUpdatedUserFields(t, db, tc.userId, tc.expectedUser, testUsername, testPasswordHash)
 		})
 	}
 }
@@ -295,17 +293,3 @@ func verifyUpdatedUserFields(t *testing.T, db *gorm.DB, userId string, expectedU
 	assert.Equal(t, expectedPassword, checkUser.Password)
 }
 
-// buildExpectedUserForUpdate builds an expected user for update verification
-func buildExpectedUserForUpdate(inputDto dto.UpdateUserProfileRequestDto) *model.User {
-	expectedUser := &model.User{
-		DisplayName: inputDto.DisplayName,
-		Email:       inputDto.Email,
-	}
-	if inputDto.DisplayName == "" {
-		expectedUser.DisplayName = testDisplayName
-	}
-	if inputDto.Email == "" {
-		expectedUser.Email = testEmail
-	}
-	return expectedUser
-}
