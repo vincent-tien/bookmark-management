@@ -11,9 +11,29 @@ import (
 	"gorm.io/gorm"
 )
 
+// Test data constants
+const (
+	testUserID       = "deb745af-1a62-4efa-99a0-f06b274bd993"
+	testUsername     = "John Doe"
+	testDisplayName  = "John Doe"
+	testEmail        = "john.doe@example.com"
+	testPasswordHash = "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106"
+)
+
 // setupTestDB creates a test database with user fixture
 func setupTestDB(t *testing.T) *gorm.DB {
 	return fixture.NewFixture(t, &fixture.UserFixture{})
+}
+
+// expectedJohnDoeUser returns the expected John Doe user from fixtures
+func expectedJohnDoeUser() *model.User {
+	return &model.User{
+		ID:          testUserID,
+		DisplayName: testDisplayName,
+		Username:    testUsername,
+		Password:    testPasswordHash,
+		Email:       testEmail,
+	}
 }
 
 // normalizeTimeFields sets CreatedAt and UpdatedAt to zero time for comparison
@@ -119,16 +139,10 @@ func TestUser_GetUserById(t *testing.T) {
 		expectErrString string
 	}{
 		{
-			name:    "get user by id success",
-			setupDb: setupTestDB,
-			inputId: "deb745af-1a62-4efa-99a0-f06b274bd993",
-			expectedOut: &model.User{
-				ID:          "deb745af-1a62-4efa-99a0-f06b274bd993",
-				DisplayName: "John Doe",
-				Username:    "John Doe",
-				Password:    "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106",
-				Email:       "john.doe@example.com",
-			},
+			name:            "get user by id success",
+			setupDb:         setupTestDB,
+			inputId:         testUserID,
+			expectedOut:     expectedJohnDoeUser(),
 			expectErrString: "",
 		},
 		{
@@ -165,16 +179,10 @@ func TestUser_GetUserByUsername(t *testing.T) {
 		expectErrString string
 	}{
 		{
-			name:    "get user by username success",
-			setupDb: setupTestDB,
-			inputUsername: "John Doe",
-			expectedOut: &model.User{
-				ID:          "deb745af-1a62-4efa-99a0-f06b274bd993",
-				DisplayName: "John Doe",
-				Username:    "John Doe",
-				Password:    "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106",
-				Email:       "john.doe@example.com",
-			},
+			name:            "get user by username success",
+			setupDb:         setupTestDB,
+			inputUsername:   testUsername,
+			expectedOut:     expectedJohnDoeUser(),
 			expectErrString: "",
 		},
 		{
@@ -214,59 +222,52 @@ func TestUser_UpdateProfile(t *testing.T) {
 			name:    "update display name success",
 			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
+				UserId:      testUserID,
 				DisplayName: "John Updated",
 				Email:       "",
 			},
 			expectErrString: "",
 			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				verifyUpdatedUserFields(t, db, userId, expectedUser, "John Doe", "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106")
+				verifyUpdatedUserFields(t, db, userId, expectedUser, testUsername, testPasswordHash)
 			},
 		},
 		{
 			name:    "update email success",
 			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
+				UserId:      testUserID,
 				DisplayName: "",
 				Email:       "john.updated@example.com",
 			},
 			expectErrString: "",
 			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				checkUser := &model.User{}
-				err := db.Where("id = ?", userId).First(checkUser).Error
-				assert.Nil(t, err)
-				assert.Equal(t, expectedUser.Email, checkUser.Email)
-				assert.Equal(t, expectedUser.DisplayName, checkUser.DisplayName)
-				// Username and Password should remain unchanged
-				assert.Equal(t, "John Doe", checkUser.Username)
-				assert.Equal(t, "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106", checkUser.Password)
+				verifyUpdatedUserFields(t, db, userId, expectedUser, testUsername, testPasswordHash)
 			},
 		},
 		{
 			name:    "update both display name and email success",
 			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
+				UserId:      testUserID,
 				DisplayName: "John Updated",
 				Email:       "john.updated@example.com",
 			},
 			expectErrString: "",
 			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				verifyUpdatedUserFields(t, db, userId, expectedUser, "John Doe", "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106")
+				verifyUpdatedUserFields(t, db, userId, expectedUser, testUsername, testPasswordHash)
 			},
 		},
 		{
 			name:    "update with no fields to update success",
 			setupDb: setupTestDB,
 			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      "deb745af-1a62-4efa-99a0-f06b274bd993",
+				UserId:      testUserID,
 				DisplayName: "",
 				Email:       "",
 			},
 			expectErrString: "",
 			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				verifyUpdatedUserFields(t, db, userId, &model.User{DisplayName: "John Doe", Email: "john.doe@example.com"}, "John Doe", "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106")
+				verifyUpdatedUserFields(t, db, userId, &model.User{DisplayName: testDisplayName, Email: testEmail}, testUsername, testPasswordHash)
 			},
 		},
 		{
@@ -298,19 +299,7 @@ func TestUser_UpdateProfile(t *testing.T) {
 			assert.Nil(t, err)
 
 			if tc.verifyFunc != nil {
-				// Build expected user for verification
-				expectedUser := &model.User{
-					DisplayName: tc.inputDto.DisplayName,
-					Email:       tc.inputDto.Email,
-				}
-				// If DisplayName is empty, use the original value
-				if tc.inputDto.DisplayName == "" {
-					expectedUser.DisplayName = "John Doe"
-				}
-				// If Email is empty, use the original value
-				if tc.inputDto.Email == "" {
-					expectedUser.Email = "john.doe@example.com"
-				}
+				expectedUser := buildExpectedUserForUpdate(tc.inputDto)
 				tc.verifyFunc(db, tc.inputDto.UserId, expectedUser)
 			}
 		})
@@ -342,4 +331,19 @@ func verifyUpdatedUserFields(t *testing.T, db *gorm.DB, userId string, expectedU
 	// Username and Password should remain unchanged
 	assert.Equal(t, expectedUsername, checkUser.Username)
 	assert.Equal(t, expectedPassword, checkUser.Password)
+}
+
+// buildExpectedUserForUpdate builds an expected user for update verification
+func buildExpectedUserForUpdate(inputDto dto.UpdateUserProfileRequestDto) *model.User {
+	expectedUser := &model.User{
+		DisplayName: inputDto.DisplayName,
+		Email:       inputDto.Email,
+	}
+	if inputDto.DisplayName == "" {
+		expectedUser.DisplayName = testDisplayName
+	}
+	if inputDto.Email == "" {
+		expectedUser.Email = testEmail
+	}
+	return expectedUser
 }

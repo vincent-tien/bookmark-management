@@ -261,8 +261,7 @@ func TestUser_GetProfile(t *testing.T) {
 		{
 			name: "success case",
 			setupRequest: func(ctx *gin.Context) {
-				setupGetRequest(ctx, http.MethodGet, getProfileEndpoint())
-				setupUserIDInContext(ctx, "test-user-id-123")
+				setupAuthenticatedGetRequest(ctx, getProfileEndpoint(), "test-user-id-123")
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
@@ -306,8 +305,7 @@ func TestUser_GetProfile(t *testing.T) {
 		{
 			name: "unauthorized - user not found",
 			setupRequest: func(ctx *gin.Context) {
-				setupGetRequest(ctx, http.MethodGet, getProfileEndpoint())
-				setupUserIDInContext(ctx, "non-existent-user-id")
+				setupAuthenticatedGetRequest(ctx, getProfileEndpoint(), "non-existent-user-id")
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
@@ -321,8 +319,7 @@ func TestUser_GetProfile(t *testing.T) {
 		{
 			name: "internal server error",
 			setupRequest: func(ctx *gin.Context) {
-				setupGetRequest(ctx, http.MethodGet, getProfileEndpoint())
-				setupUserIDInContext(ctx, "test-user-id-123")
+				setupAuthenticatedGetRequest(ctx, getProfileEndpoint(), "test-user-id-123")
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
@@ -433,6 +430,12 @@ func setupGetRequest(ctx *gin.Context, method, endpoint string) {
 // setupUserIDInContext sets the user ID in the gin context
 func setupUserIDInContext(ctx *gin.Context, userID string) {
 	ctx.Set(middleware.UserIDKey, userID)
+}
+
+// setupAuthenticatedGetRequest sets up a GET request with user ID in context
+func setupAuthenticatedGetRequest(ctx *gin.Context, endpoint, userID string) {
+	setupGetRequest(ctx, http.MethodGet, endpoint)
+	setupUserIDInContext(ctx, userID)
 }
 
 // validLoginRequest returns a valid LoginRequestDto for testing
