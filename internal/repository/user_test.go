@@ -36,6 +36,17 @@ func expectedJohnDoeUser() *model.User {
 	}
 }
 
+// newTestUser creates a new test user with custom fields
+func newTestUser(id, displayName, username, email string) *model.User {
+	return &model.User{
+		ID:          id,
+		DisplayName: displayName,
+		Username:    username,
+		Password:    testPasswordHash,
+		Email:       email,
+	}
+}
+
 // normalizeTimeFields sets CreatedAt and UpdatedAt to zero time for comparison
 func normalizeTimeFields(user *model.User) {
 	if user != nil {
@@ -62,23 +73,11 @@ func TestUser_CreateUser(t *testing.T) {
 		verifyFunc      func(db *gorm.DB, user *model.User)
 	}{
 		{
-			name:    "create success",
-			setupDb: setupTestDB,
-			inputUser: &model.User{
-				ID:          "deb745af-1a62-4efa-99a0-f06b274bd999",
-				DisplayName: "John Doo",
-				Username:    "John Doo",
-				Password:    "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106",
-				Email:       "john.doo@example.com",
-			},
+			name:            "create success",
+			setupDb:         setupTestDB,
+			inputUser:       newTestUser("deb745af-1a62-4efa-99a0-f06b274bd999", "John Doo", "John Doo", "john.doo@example.com"),
 			expectErrString: "",
-			expectedOut: &model.User{
-				ID:          "deb745af-1a62-4efa-99a0-f06b274bd999",
-				DisplayName: "John Doo",
-				Username:    "John Doo",
-				Password:    "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106",
-				Email:       "john.doo@example.com",
-			},
+			expectedOut:     newTestUser("deb745af-1a62-4efa-99a0-f06b274bd999", "John Doo", "John Doo", "john.doo@example.com"),
 			verifyFunc: func(db *gorm.DB, user *model.User) {
 				checkUser := &model.User{}
 				err := db.Where("username = ?", user.Username).First(checkUser).Error
@@ -88,15 +87,9 @@ func TestUser_CreateUser(t *testing.T) {
 			},
 		},
 		{
-			name:    "error on duplicate username",
-			setupDb: setupTestDB,
-			inputUser: &model.User{
-				ID:          "deb745af-1a62-4efa-99a0-f06b274bd995",
-				DisplayName: "John Doe",
-				Username:    "John Doe",
-				Password:    "$2a$10$wfpS7JvQgcHvHLk86eFs.jhKCIucgr9fhPkyBLVQntSHOnBOS106",
-				Email:       "john.doe.dup@example.com",
-			},
+			name:            "error on duplicate username",
+			setupDb:         setupTestDB,
+			inputUser:       newTestUser("deb745af-1a62-4efa-99a0-f06b274bd995", testDisplayName, testUsername, "john.doe.dup@example.com"),
 			expectErrString: "UNIQUE constraint failed: users.username",
 			expectedOut:     nil,
 		},
@@ -216,59 +209,30 @@ func TestUser_UpdateProfile(t *testing.T) {
 		setupDb         func(t *testing.T) *gorm.DB
 		inputDto        dto.UpdateUserProfileRequestDto
 		expectErrString string
-		verifyFunc      func(db *gorm.DB, userId string, expectedUser *model.User)
 	}{
 		{
-			name:    "update display name success",
-			setupDb: setupTestDB,
-			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      testUserID,
-				DisplayName: "John Updated",
-				Email:       "",
-			},
+			name:            "update display name success",
+			setupDb:         setupTestDB,
+			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "John Updated", Email: ""},
 			expectErrString: "",
-			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				verifyUpdatedUserFields(t, db, userId, expectedUser, testUsername, testPasswordHash)
-			},
 		},
 		{
-			name:    "update email success",
-			setupDb: setupTestDB,
-			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      testUserID,
-				DisplayName: "",
-				Email:       "john.updated@example.com",
-			},
+			name:            "update email success",
+			setupDb:         setupTestDB,
+			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "", Email: "john.updated@example.com"},
 			expectErrString: "",
-			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				verifyUpdatedUserFields(t, db, userId, expectedUser, testUsername, testPasswordHash)
-			},
 		},
 		{
-			name:    "update both display name and email success",
-			setupDb: setupTestDB,
-			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      testUserID,
-				DisplayName: "John Updated",
-				Email:       "john.updated@example.com",
-			},
+			name:            "update both display name and email success",
+			setupDb:         setupTestDB,
+			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "John Updated", Email: "john.updated@example.com"},
 			expectErrString: "",
-			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				verifyUpdatedUserFields(t, db, userId, expectedUser, testUsername, testPasswordHash)
-			},
 		},
 		{
-			name:    "update with no fields to update success",
-			setupDb: setupTestDB,
-			inputDto: dto.UpdateUserProfileRequestDto{
-				UserId:      testUserID,
-				DisplayName: "",
-				Email:       "",
-			},
+			name:            "update with no fields to update success",
+			setupDb:         setupTestDB,
+			inputDto:        dto.UpdateUserProfileRequestDto{UserId: testUserID, DisplayName: "", Email: ""},
 			expectErrString: "",
-			verifyFunc: func(db *gorm.DB, userId string, expectedUser *model.User) {
-				verifyUpdatedUserFields(t, db, userId, &model.User{DisplayName: testDisplayName, Email: testEmail}, testUsername, testPasswordHash)
-			},
 		},
 		{
 			name:    "error on user not found",
@@ -298,10 +262,8 @@ func TestUser_UpdateProfile(t *testing.T) {
 
 			assert.Nil(t, err)
 
-			if tc.verifyFunc != nil {
-				expectedUser := buildExpectedUserForUpdate(tc.inputDto)
-				tc.verifyFunc(db, tc.inputDto.UserId, expectedUser)
-			}
+			expectedUser := buildExpectedUserForUpdate(tc.inputDto)
+			verifyUpdatedUserFields(t, db, tc.inputDto.UserId, expectedUser, testUsername, testPasswordHash)
 		})
 	}
 }

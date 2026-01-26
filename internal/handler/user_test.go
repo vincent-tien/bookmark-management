@@ -30,6 +30,32 @@ func setupEmptyMockService(t *testing.T, ctx *gin.Context) *mocks.User {
 	return mocks.NewUser(t)
 }
 
+// handlerTestCase represents a common test case structure for handler tests
+type handlerTestCase struct {
+	name           string
+	setupRequest   func(ctx *gin.Context)
+	setupMockSvc   func(t *testing.T, ctx *gin.Context) *mocks.User
+	expectedStatus int
+	expectedResp   string
+}
+
+// runHandlerTests runs a set of handler test cases with the given handler function
+func runHandlerTests(t *testing.T, testCases []handlerTestCase, handlerFn func(h User, ctx *gin.Context)) {
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			rec, ctx := createTestContext()
+			tc.setupRequest(ctx)
+			mockSvc := tc.setupMockSvc(t, ctx)
+			handler := NewUserHandler(mockSvc)
+			handlerFn(handler, ctx)
+
+			assertResponse(t, rec, tc.expectedStatus, tc.expectedResp)
+			mockSvc.AssertExpectations(t)
+		})
+	}
+}
+
 func init() {
 	// Register custom validators for tests
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
@@ -42,17 +68,11 @@ func init() {
 func TestUser_Register(t *testing.T) {
 	t.Parallel()
 
-	testCases := []struct {
-		name           string
-		setupRequest   func(ctx *gin.Context)
-		setupMockSvc   func(t *testing.T, ctx *gin.Context) *mocks.User
-		expectedStatus int
-		expectedResp   string
-	}{
+	testCases := []handlerTestCase{
 		{
 			name: "success case",
 			setupRequest: func(ctx *gin.Context) {
-				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), validRegisterRequest())
+				setupRegisterRequest(ctx, validRegisterRequest())
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
@@ -73,52 +93,45 @@ func TestUser_Register(t *testing.T) {
 			expectedResp:   `"message":"Register an user successfully!"`,
 		},
 		{
-			name: "bad request - invalid JSON",
-			setupRequest: func(ctx *gin.Context) {
-				setupInvalidJSONRequest(ctx, http.MethodPost, getRegisterEndpoint())
-			},
-			setupMockSvc: setupEmptyMockService,
+			name:           "bad request - invalid JSON",
+			setupRequest:   func(ctx *gin.Context) { setupInvalidJSONRequest(ctx, http.MethodPost, getRegisterEndpoint()) },
+			setupMockSvc:   setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
 		{
-			name: "bad request - missing required fields",
-			setupRequest: func(ctx *gin.Context) {
-				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), map[string]interface{}{})
-			},
-			setupMockSvc: setupEmptyMockService,
+			name:           "bad request - missing required fields",
+			setupRequest:   func(ctx *gin.Context) { setupRegisterRequest(ctx, map[string]interface{}{}) },
+			setupMockSvc:   setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
 		{
 			name: "bad request - invalid email format",
 			setupRequest: func(ctx *gin.Context) {
-				reqBody := validRegisterRequest()
-				reqBody.Email = "invalid-email"
-				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), reqBody)
+				req := validRegisterRequest()
+				req.Email = "invalid-email"
+				setupRegisterRequest(ctx, req)
 			},
-			setupMockSvc: setupEmptyMockService,
+			setupMockSvc:   setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
 		{
 			name: "bad request - password too short",
 			setupRequest: func(ctx *gin.Context) {
-				reqBody := validRegisterRequest()
-				//nolint:gosec // NOSONAR - This is test data, not a real credential
-				// This intentionally uses a short password to test validation
-				testValue := "short"
-				reqBody.Password = testValue // NOSONAR - test data for validation testing
-				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), reqBody)
+				req := validRegisterRequest()
+				req.Password = weakPassword()
+				setupRegisterRequest(ctx, req)
 			},
-			setupMockSvc: setupEmptyMockService,
+			setupMockSvc:   setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
 		{
 			name: "internal server error",
 			setupRequest: func(ctx *gin.Context) {
-				setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), validRegisterRequest())
+				setupRegisterRequest(ctx, validRegisterRequest())
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
@@ -131,35 +144,17 @@ func TestUser_Register(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			rec, ctx := createTestContext()
-			tc.setupRequest(ctx)
-			mockSvc := tc.setupMockSvc(t, ctx)
-			handler := NewUserHandler(mockSvc)
-			handler.Register(ctx)
-
-			assertResponse(t, rec, tc.expectedStatus, tc.expectedResp)
-			mockSvc.AssertExpectations(t)
-		})
-	}
+	runHandlerTests(t, testCases, func(h User, ctx *gin.Context) { h.Register(ctx) })
 }
 
 func TestUser_Login(t *testing.T) {
 	t.Parallel()
 
-	testCases := []struct {
-		name           string
-		setupRequest   func(ctx *gin.Context)
-		setupMockSvc   func(t *testing.T, ctx *gin.Context) *mocks.User
-		expectedStatus int
-		expectedResp   string
-	}{
+	testCases := []handlerTestCase{
 		{
 			name: "success case",
 			setupRequest: func(ctx *gin.Context) {
-				setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), validLoginRequest())
+				setupLoginRequest(ctx, validLoginRequest())
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
@@ -172,41 +167,34 @@ func TestUser_Login(t *testing.T) {
 			expectedResp:   `"message":"Logged in successfully!"`,
 		},
 		{
-			name: "bad request - invalid JSON",
-			setupRequest: func(ctx *gin.Context) {
-				setupInvalidJSONRequest(ctx, http.MethodPost, getLoginEndpoint())
-			},
-			setupMockSvc: setupEmptyMockService,
+			name:           "bad request - invalid JSON",
+			setupRequest:   func(ctx *gin.Context) { setupInvalidJSONRequest(ctx, http.MethodPost, getLoginEndpoint()) },
+			setupMockSvc:   setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
 		{
-			name: "bad request - missing required fields",
-			setupRequest: func(ctx *gin.Context) {
-				setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), map[string]interface{}{})
-			},
-			setupMockSvc: setupEmptyMockService,
+			name:           "bad request - missing required fields",
+			setupRequest:   func(ctx *gin.Context) { setupLoginRequest(ctx, map[string]interface{}{}) },
+			setupMockSvc:   setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
 		{
 			name: "bad request - password too short",
 			setupRequest: func(ctx *gin.Context) {
-				reqBody := validLoginRequest()
-				//nolint:gosec // NOSONAR - This is test data, not a real credential
-				// This intentionally uses a short password to test validation
-				testValue := "short"
-				reqBody.RawPassword = testValue // NOSONAR - test data for validation testing
-				setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), reqBody)
+				req := validLoginRequest()
+				req.RawPassword = weakPassword()
+				setupLoginRequest(ctx, req)
 			},
-			setupMockSvc: setupEmptyMockService,
+			setupMockSvc:   setupEmptyMockService,
 			expectedStatus: http.StatusBadRequest,
 			expectedResp:   "",
 		},
 		{
 			name: "bad request - invalid auth",
 			setupRequest: func(ctx *gin.Context) {
-				setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), validLoginRequest())
+				setupLoginRequest(ctx, validLoginRequest())
 			},
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
@@ -218,14 +206,11 @@ func TestUser_Login(t *testing.T) {
 			expectedResp:   `"error":"invalid username or password"`,
 		},
 		{
-			name: "internal server error",
-			setupRequest: func(ctx *gin.Context) {
-				setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), validLoginRequest())
-			},
+			name:         "internal server error",
+			setupRequest: func(ctx *gin.Context) { setupLoginRequest(ctx, validLoginRequest()) },
 			setupMockSvc: func(t *testing.T, ctx *gin.Context) *mocks.User {
 				mockSvc := mocks.NewUser(t)
-				expectedReq := validLoginRequest()
-				mockSvc.On("Login", ctx, expectedReq).Return("", errors.New("database error"))
+				mockSvc.On("Login", ctx, validLoginRequest()).Return("", errors.New("database error"))
 				return mockSvc
 			},
 			expectedStatus: http.StatusInternalServerError,
@@ -233,31 +218,13 @@ func TestUser_Login(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			rec, ctx := createTestContext()
-			tc.setupRequest(ctx)
-			mockSvc := tc.setupMockSvc(t, ctx)
-			handler := NewUserHandler(mockSvc)
-			handler.Login(ctx)
-
-			assertResponse(t, rec, tc.expectedStatus, tc.expectedResp)
-			mockSvc.AssertExpectations(t)
-		})
-	}
+	runHandlerTests(t, testCases, func(h User, ctx *gin.Context) { h.Login(ctx) })
 }
 
 func TestUser_GetProfile(t *testing.T) {
 	t.Parallel()
 
-	testCases := []struct {
-		name           string
-		setupRequest   func(ctx *gin.Context)
-		setupMockSvc   func(t *testing.T, ctx *gin.Context) *mocks.User
-		expectedStatus int
-		expectedResp   string
-	}{
+	testCases := []handlerTestCase{
 		{
 			name: "success case",
 			setupRequest: func(ctx *gin.Context) {
@@ -332,19 +299,7 @@ func TestUser_GetProfile(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			rec, ctx := createTestContext()
-			tc.setupRequest(ctx)
-			mockSvc := tc.setupMockSvc(t, ctx)
-			handler := NewUserHandler(mockSvc)
-			handler.GetProfile(ctx)
-
-			assertResponse(t, rec, tc.expectedStatus, tc.expectedResp)
-			mockSvc.AssertExpectations(t)
-		})
-	}
+	runHandlerTests(t, testCases, func(h User, ctx *gin.Context) { h.GetProfile(ctx) })
 }
 
 // setupJSONRequest creates a JSON request and sets it on the gin context
@@ -444,4 +399,19 @@ func validLoginRequest() dto.LoginRequestDto {
 		Username:    "johndoe",
 		RawPassword: fixture.ValidTestPassword(),
 	}
+}
+
+// setupRegisterRequest sets up a register request with the given body
+func setupRegisterRequest(ctx *gin.Context, body interface{}) {
+	setupJSONRequest(ctx, http.MethodPost, getRegisterEndpoint(), body)
+}
+
+// setupLoginRequest sets up a login request with the given body
+func setupLoginRequest(ctx *gin.Context, body interface{}) {
+	setupJSONRequest(ctx, http.MethodPost, getLoginEndpoint(), body)
+}
+
+// weakPassword returns a weak password for validation testing
+func weakPassword() string {
+	return "short"
 }
