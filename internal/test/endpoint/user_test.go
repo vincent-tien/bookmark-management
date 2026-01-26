@@ -196,7 +196,8 @@ func TestUserLoginEndpoint(t *testing.T) {
 		{
 			name: "success case",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB) *httptest.ResponseRecorder {
-				// Create a test user
+				//nolint:gosec // NOSONAR - This is test data, not a real credential
+				// This intentionally uses a short password to test validation
 				testPassword := "SecurePass123!"
 				hashedPassword := utils.HashPassword(testPassword)
 				testUser := &model.User{
@@ -275,7 +276,8 @@ func TestUserLoginEndpoint(t *testing.T) {
 		{
 			name: "bad request - invalid credentials - wrong password",
 			setupTestHttp: func(t *testing.T, api apipkg.Engine, db *gorm.DB) *httptest.ResponseRecorder {
-				// Create a test user
+				//nolint:gosec // NOSONAR - This is test data, not a real credential
+				// This intentionally uses a short password to test validation
 				testPassword := "SecurePass123!"
 				hashedPassword := utils.HashPassword(testPassword)
 				testUser := &model.User{
