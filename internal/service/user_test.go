@@ -4,14 +4,47 @@ import (
 	"context"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/model"
 	"github.com/vincent-tien/bookmark-management/internal/repository/mocks"
+	"github.com/vincent-tien/bookmark-management/pkg/jwtUtils"
 	"github.com/vincent-tien/bookmark-management/pkg/utils"
 )
+
+// mockJwtGenerator is a no-op mock for JWT generator used in Register tests
+type mockJwtGenerator struct{}
+
+func (m *mockJwtGenerator) GenerateToken(jwtContent jwt.MapClaims) (string, error) {
+	return "", nil
+}
+
+func (m *mockJwtGenerator) GenerateContent(sub string) jwt.MapClaims {
+	return jwt.MapClaims{}
+}
+
+// Ensure mockJwtGenerator implements jwtUtils.JwtGenerator interface
+var _ jwtUtils.JwtGenerator = (*mockJwtGenerator)(nil)
+
+// validateTestResult is a helper function to validate test results and errors.
+// It handles the common pattern of either calling a custom validateResult function
+// or asserting on expectedError.
+func validateTestResult[T any](t *testing.T, result T, err error, expectedError error, validateResult func(*testing.T, T, error)) {
+	t.Helper()
+	if validateResult != nil {
+		validateResult(t, result, err)
+	} else {
+		if expectedError != nil {
+			assert.Error(t, err)
+			assert.Equal(t, expectedError, err)
+		} else {
+			assert.NoError(t, err)
+		}
+	}
+}
 
 func TestUser_Register(t *testing.T) {
 	t.Parallel()
@@ -94,20 +127,11 @@ func TestUser_Register(t *testing.T) {
 
 			mockRepo := tc.setupMockRepo(t)
 			ctx := t.Context()
-			service := NewUserService(mockRepo)
+			mockJwtGen := &mockJwtGenerator{}
+			service := NewUserService(mockRepo, mockJwtGen)
 
 			resp, err := service.Register(ctx, tc.request)
-
-			if tc.validateResult != nil {
-				tc.validateResult(t, resp, err)
-			} else {
-				if tc.expectedError != nil {
-					assert.Error(t, err)
-					assert.Equal(t, tc.expectedError, err)
-				} else {
-					assert.NoError(t, err)
-				}
-			}
+			validateTestResult(t, resp, err, tc.expectedError, tc.validateResult)
 		})
 	}
 }

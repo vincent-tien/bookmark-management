@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate RSA keys if missing
+        run: |
+          if [ ! -f "./private.pem" ] || [ ! -f "./public.pem" ]; then
+            make generate-rsa-key
+          fi
+
       - name: Check lint
         if: ${{ github.event_name == 'pull_request' }}
         run: make docker-lint

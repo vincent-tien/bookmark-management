@@ -47,6 +47,35 @@ definitions:
           example: Shorten URL generated successfully!
         type: string
     type: object
+  dto.LoginRequestDto:
+    properties:
+      password:
+        description: |-
+          Password
+          required: true
+          example: SecurePass123!
+        minLength: 8
+        type: string
+      username:
+        description: |-
+          Username
+          required: true
+          example: johndoe
+        type: string
+    type: object
+  dto.LoginSuccessResponse:
+    properties:
+      data:
+        description: |-
+          JWT token
+          example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      message:
+        description: |-
+          Success message
+          example: Logged in successfully!
+        type: string
+    type: object
   dto.RegisterRequestDto:
     properties:
       display_name:
@@ -125,6 +154,54 @@ definitions:
         description: |-
           Success message
           example: Register an user successfully!
+        type: string
+    type: object
+  dto.UpdateUserProfileRequestDto:
+    properties:
+      display_name:
+        description: |-
+          User's display name
+          example: John Doe
+        type: string
+      email:
+        description: |-
+          User's email address
+          example: john@example.com
+        type: string
+    required:
+    - email
+    type: object
+  dto.UserProfileResponseDto:
+    properties:
+      created_at:
+        description: |-
+          Account creation timestamp
+          example: 2024-01-01T00:00:00Z
+        type: string
+      display_name:
+        description: |-
+          User's display name
+          example: John Doe
+        type: string
+      email:
+        description: |-
+          User's email address
+          example: john@example.com
+        type: string
+      id:
+        description: |-
+          User ID
+          example: 123
+        type: string
+      updated_at:
+        description: |-
+          Last update timestamp
+          example: 2024-01-01T00:00:00Z
+        type: string
+      username:
+        description: |-
+          User's username
+          example: johndoe
         type: string
     type: object
   response.Response:
@@ -211,6 +288,96 @@ paths:
       summary: Create a shortened link
       tags:
       - Links
+  /v1/self/info:
+    get:
+      consumes:
+      - application/json
+      description: Get user profile information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile
+          schema:
+            $ref: '#/definitions/dto.UserProfileResponseDto'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update user profile information (display name and/or email)
+      parameters:
+      - description: User profile update request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserProfileRequestDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile updated successfully
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - Users
+  /v1/users/login:
+    post:
+      consumes:
+      - application/json
+      description: Login a user with username and password
+      parameters:
+      - description: User login request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequestDto'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully logged in user
+          schema:
+            $ref: '#/definitions/dto.LoginSuccessResponse'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: User Login
+      tags:
+      - Users
   /v1/users/register:
     post:
       consumes:

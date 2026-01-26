@@ -13,9 +13,11 @@ import (
 	"github.com/vincent-tien/bookmark-management/docs"
 	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/handler"
+	"github.com/vincent-tien/bookmark-management/internal/middleware"
 	"github.com/vincent-tien/bookmark-management/internal/repository"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
 	"github.com/vincent-tien/bookmark-management/internal/service"
+	"github.com/vincent-tien/bookmark-management/pkg/jwtUtils"
 	validationPkg "github.com/vincent-tien/bookmark-management/pkg/validation"
 	"gorm.io/gorm"
 )
@@ -36,10 +38,12 @@ type Engine interface {
 }
 
 type api struct {
-	app         *gin.Engine
-	cfg         *config.Config
-	redisClient *redis.Client
-	db          *gorm.DB
+	app          *gin.Engine
+	cfg          *config.Config
+	redisClient  *redis.Client
+	db           *gorm.DB
+	jwtGen       jwtUtils.JwtGenerator
+	jwtValidator jwtUtils.JwtValidator
 }
 
 // Start starts the HTTP server on the configured port.
@@ -59,12 +63,14 @@ func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // New creates and initializes a new API engine instance.
 // It sets up the gin router, registers all endpoints, and returns an Engine interface.
 // The configuration is used to set up the application settings.
-func New(cfg *config.Config, redisClient *redis.Client, db *gorm.DB) Engine {
+func New(cfg *config.Config, redisClient *redis.Client, db *gorm.DB, jwtGen jwtUtils.JwtGenerator, jwtValidator jwtUtils.JwtValidator) Engine {
 	a := &api{
-		app:         gin.New(),
-		cfg:         cfg,
-		redisClient: redisClient,
-		db:          db,
+		app:          gin.New(),
+		cfg:          cfg,
+		redisClient:  redisClient,
+		db:           db,
+		jwtGen:       jwtGen,
+		jwtValidator: jwtValidator,
 	}
 	a.registerValidators()
 	a.registerEP()
@@ -111,10 +117,20 @@ func (a *api) registerLinkShortenEndpoint() {
 // registerUsersEndpoint registers the API endpoint for user-related operations at the path specified in Endpoints.Users.
 func (a *api) registerUsersEndpoint() {
 	userRepo := repository.NewUserRepository(a.db)
-	userSvc := service.NewUserService(userRepo)
+	userSvc := service.NewUserService(userRepo, a.jwtGen)
 	userHandler := handler.NewUserHandler(userSvc)
-	apiVersion := a.app.Group(fmt.Sprintf("/%s", Version))
+	apiPublic := a.app.Group(fmt.Sprintf("/%s", Version))
 	{
-		apiVersion.POST(routers.Endpoints.UserRegister, userHandler.Register)
+		apiPublic.POST(routers.Endpoints.UserRegister, userHandler.Register)
+		apiPublic.POST(routers.Endpoints.AuthLogin, userHandler.Login)
+	}
+
+	jwtMiddleware := middleware.NewJwtAuth(a.jwtValidator)
+
+	apiPrivate := a.app.Group(fmt.Sprintf("/%s", Version))
+	apiPrivate.Use(jwtMiddleware.JwtAuth())
+	{
+		apiPrivate.GET(routers.Endpoints.GetProfile, userHandler.GetProfile)
+		apiPrivate.PUT(routers.Endpoints.GetProfile, userHandler.UpdateProfile)
 	}
 }

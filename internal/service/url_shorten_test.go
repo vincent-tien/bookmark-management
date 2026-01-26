@@ -98,17 +98,7 @@ func TestUrlShorten_Shorten(t *testing.T) {
 
 			ctx := t.Context()
 			code, err := service.Shorten(ctx, tc.request)
-
-			if tc.validateResult != nil {
-				tc.validateResult(t, code, err)
-			} else {
-				if tc.expectedError != nil {
-					assert.Error(t, err)
-					assert.Equal(t, tc.expectedError, err)
-				} else {
-					assert.NoError(t, err)
-				}
-			}
+			validateTestResult(t, code, err, tc.expectedError, tc.validateResult)
 		})
 	}
 }

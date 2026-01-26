@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/vincent-tien/bookmark-management/internal/config"
 	"github.com/vincent-tien/bookmark-management/internal/dto"
 	"github.com/vincent-tien/bookmark-management/internal/routers"
+	"github.com/vincent-tien/bookmark-management/pkg/jwtUtils"
 	redisPkg "github.com/vincent-tien/bookmark-management/pkg/redis"
 	sqldbPkg "github.com/vincent-tien/bookmark-management/pkg/sqldb"
 )
@@ -113,7 +115,21 @@ func TestLinkShortenEndpoint(t *testing.T) {
 			mockRedis := redisPkg.InitMockRedis(t)
 			mockDB := sqldbPkg.InitMockDb(t)
 
-			app := apipkg.New(cfg, mockRedis, mockDB)
+			projectRoot := getProjectRoot(t)
+			privateKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "private.test.pem")
+			publicKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "public.test.pem")
+
+			jwtGenerator, err := jwtUtils.NewJwtGenerator(privateKeyPath)
+			if err != nil {
+				t.Fatalf("Failed to create JWT generator: %v", err)
+			}
+
+			jwtValidator, err := jwtUtils.NewJwtValidator(publicKeyPath)
+			if err != nil {
+				t.Fatalf("Failed to create JWT validator: %v", err)
+			}
+
+			app := apipkg.New(cfg, mockRedis, mockDB, jwtGenerator, jwtValidator)
 			rec := tc.setupTestHttp(app)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
@@ -210,7 +226,21 @@ func TestRedirectLinkEndpoint(t *testing.T) {
 			mockRedis := redisPkg.InitMockRedis(t)
 			mockDB := sqldbPkg.InitMockDb(t)
 
-			app := apipkg.New(cfg, mockRedis, mockDB)
+			projectRoot := getProjectRoot(t)
+			privateKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "private.test.pem")
+			publicKeyPath := filepath.Join(projectRoot, "pkg", "jwtUtils", "public.test.pem")
+
+			jwtGenerator, err := jwtUtils.NewJwtGenerator(privateKeyPath)
+			if err != nil {
+				t.Fatalf("Failed to create JWT generator: %v", err)
+			}
+
+			jwtValidator, err := jwtUtils.NewJwtValidator(publicKeyPath)
+			if err != nil {
+				t.Fatalf("Failed to create JWT validator: %v", err)
+			}
+
+			app := apipkg.New(cfg, mockRedis, mockDB, jwtGenerator, jwtValidator)
 			rec := tc.setupTestHttp(app, mockRedis)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
